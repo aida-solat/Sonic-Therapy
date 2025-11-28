@@ -1,12 +1,12 @@
 # Dependencies
-node_modules/
+node_modules
 
 # Build output
-dist/
+dist
 
 # Test coverage & caches
-coverage/
-.vitest/
+coverage
+.vitest
 
 # Environment files (real secrets)
 .env
