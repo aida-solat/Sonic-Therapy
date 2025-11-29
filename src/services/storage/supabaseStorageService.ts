@@ -8,23 +8,30 @@ import { StorageService, UploadTrackParams, GetDownloadUrlParams } from './stora
 const BUCKET_NAME = 'tracks';
 
 export const supabaseStorageService: StorageService = {
-  async uploadTrack(params: UploadTrackParams): Promise<{ storagePath: string }> {
+  async uploadTrack(params: UploadTrackParams): Promise<{ storagePath: string; contentType: string }> {
     const storagePath = `tracks/${params.userId}/${params.trackId}.${params.format}`;
 
-    const fileData = await fs.readFile(params.localFilePath);
+    let fileData: Buffer;
+    try {
+      fileData = await fs.readFile(params.localFilePath);
+    } catch {
+      throw new AppError('Failed to read local file for upload', 'storage_error', 500);
+    }
+
+    const contentType = params.format === 'mp3' ? 'audio/mpeg' : 'audio/wav';
 
     const { error } = await supabaseClient.storage
       .from(BUCKET_NAME)
       .upload(storagePath, fileData, {
         upsert: true,
-        contentType: params.format === 'mp3' ? 'audio/mpeg' : 'audio/wav'
+        contentType
       });
 
     if (error) {
       throw new AppError('Failed to upload track', 'storage_error', 500);
     }
 
-    return { storagePath };
+    return { storagePath, contentType };
   },
 
   async getDownloadUrl(params: GetDownloadUrlParams): Promise<string> {

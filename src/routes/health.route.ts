@@ -1,5 +1,3 @@
-import { FastifyInstance } from 'fastify';
-
-export function registerHealthRoute(app: FastifyInstance): void {
+export function registerHealthRoute(app: any): void {
   app.get('/healthz', async () => ({ status: 'ok' }));
 }

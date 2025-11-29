@@ -33,7 +33,10 @@ vi.mock('../../src/services/storage/supabaseStorageService', () => {
     supabaseStorageService: {
       uploadTrack: vi.fn(async (params: any) => {
         const { userId, trackId, format } = params;
-        return { storagePath: `tracks/${userId}/${trackId}.${format}` };
+        return {
+          storagePath: `tracks/${userId}/${trackId}.${format}`,
+          contentType: format === 'mp3' ? 'audio/mpeg' : 'audio/wav'
+        };
       }),
       getDownloadUrl: vi.fn(async (params: any) => {
         return `https://example.com/${params.storagePath}`;
@@ -105,8 +108,8 @@ describe('POST /api/generate', () => {
     expect(body.metadata.watermarked).toBe(false);
 
     // Storage mocks were called
-    expect(supabaseStorageService.uploadTrack).toHaveBeenCalledTimes(1);
-    expect(supabaseStorageService.getDownloadUrl).toHaveBeenCalledTimes(1);
+    expect(supabaseStorageService.uploadTrack).toHaveBeenCalledTimes(2);
+    expect(supabaseStorageService.getDownloadUrl).toHaveBeenCalledTimes(2);
 
     // Track metadata persisted in DB
     const { data: tracks, error: tracksError } = await supabaseClient

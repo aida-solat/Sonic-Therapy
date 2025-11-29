@@ -1,7 +1,8 @@
-import fastify, { FastifyError, FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import fastify, { FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import formbody from '@fastify/formbody';
 
+import { loggerOptions } from './infra/logger';
 import { registerHealthRoute } from './routes/health.route';
 import { registerGenerateRoute } from './routes/generate.route';
 import { registerKeysRoute } from './routes/keys.route';
@@ -10,12 +11,14 @@ import { registerStripeWebhookRoute } from './routes/stripeWebhook.route';
 import { AppError, ErrorResponse } from './types/errors';
 
 export function buildApp(): FastifyInstance {
-  const app = fastify();
+  const app = fastify({
+    logger: loggerOptions
+  });
 
   app.register(cors);
   app.register(formbody);
 
-  app.setErrorHandler((error: FastifyError, _request: FastifyRequest, reply: FastifyReply) => {
+  app.setErrorHandler((error: any, request: any, reply: any) => {
     let status: number;
     let code: string;
     let message: string;
@@ -41,6 +44,17 @@ export function buildApp(): FastifyInstance {
         status
       }
     };
+
+    app.log.error(
+      {
+        err: error,
+        url: request.raw.url,
+        method: request.raw.method,
+        status,
+        code
+      },
+      'Request failed'
+    );
 
     void reply.status(status).send(payload);
   });

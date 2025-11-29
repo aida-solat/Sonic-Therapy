@@ -5,6 +5,7 @@ import { config } from '../../config/env';
 import { supabaseClient } from '../../infra/supabaseClient';
 import { AppError } from '../../types/errors';
 import { PlanType } from '../../types/domain';
+import { logger } from '../../infra/logger';
 
 export interface StripeWebhookService {
   handleEvent(rawBody: Buffer | string | unknown, signature: string | string[] | undefined): Promise<void>;
@@ -20,6 +21,45 @@ function getPlanFromMetadata(metadata: Record<string, any> | null | undefined): 
   if (plan === 'free' || plan === 'basic' || plan === 'pro' || plan === 'ultra') {
     return plan;
   }
+  return null;
+}
+
+async function resolvePlanFromSubscription(subscription: Stripe.Subscription): Promise<PlanType | null> {
+  const directPlan = getPlanFromMetadata(subscription.metadata ?? {});
+  if (directPlan) {
+    return directPlan;
+  }
+
+  const items = subscription.items?.data ?? [];
+  for (const item of items) {
+    const itemPlan = getPlanFromMetadata((item.metadata ?? {}) as Record<string, any>);
+    if (itemPlan) {
+      return itemPlan;
+    }
+
+    const price = item.price;
+    if (price) {
+      const pricePlan = getPlanFromMetadata((price.metadata ?? {}) as Record<string, any>);
+      if (pricePlan) {
+        return pricePlan;
+      }
+
+      const productRef = price.product;
+      if (productRef && typeof productRef === 'object' && (productRef as Stripe.Product).metadata) {
+        const productPlan = getPlanFromMetadata(((productRef as Stripe.Product).metadata ?? {}) as Record<string, any>);
+        if (productPlan) {
+          return productPlan;
+        }
+      } else if (typeof productRef === 'string') {
+        const product = await stripeClient.products.retrieve(productRef);
+        const productPlan = getPlanFromMetadata((product.metadata ?? {}) as Record<string, any>);
+        if (productPlan) {
+          return productPlan;
+        }
+      }
+    }
+  }
+
   return null;
 }
 
@@ -92,6 +132,7 @@ async function logAndEnsureEvent(event: Stripe.Event): Promise<number> {
     .eq('stripe_event_id', eventId);
 
   if (selectError) {
+    logger.error({ err: selectError }, 'Failed to load Stripe webhook event');
     throw new AppError('Failed to load Stripe webhook event', 'db_error', 500);
   }
 
@@ -99,8 +140,10 @@ async function logAndEnsureEvent(event: Stripe.Event): Promise<number> {
     const existing = existingRows[0] as { id: number; processed_at: string | null };
     if (existing.processed_at) {
       // already processed – idempotent no-op
+      logger.debug({ eventId }, 'Stripe webhook event already processed, skipping');
       return -1;
     }
+    logger.debug({ eventId, rowId: existing.id }, 'Stripe webhook event loaded for retry');
     return existing.id;
   }
 
@@ -116,8 +159,11 @@ async function logAndEnsureEvent(event: Stripe.Event): Promise<number> {
     .single();
 
   if (insertError || !inserted) {
+    logger.error({ err: insertError }, 'Failed to log Stripe webhook event');
     throw new AppError('Failed to log Stripe webhook event', 'db_error', 500);
   }
+
+  logger.debug({ eventId, rowId: inserted.id }, 'Logged new Stripe webhook event');
 
   return inserted.id as number;
 }
@@ -130,6 +176,7 @@ async function markEventProcessed(rowId: number): Promise<void> {
     .eq('id', rowId);
 
   if (error) {
+    logger.error({ err: error }, 'Failed to mark Stripe webhook event as processed');
     throw new AppError('Failed to mark Stripe webhook event as processed', 'db_error', 500);
   }
 }
@@ -138,6 +185,7 @@ export const stripeWebhookService: StripeWebhookService = {
   async handleEvent(rawBody: Buffer | string | unknown, signature: string | string[] | undefined): Promise<void> {
     const normalizedSignature = normalizeSignature(signature);
     if (!normalizedSignature) {
+      logger.warn('Missing Stripe-Signature header');
       throw new AppError('Missing Stripe-Signature header', 'missing_stripe_signature', 400);
     }
 
@@ -152,8 +200,11 @@ export const stripeWebhookService: StripeWebhookService = {
     try {
       event = stripeClient.webhooks.constructEvent(payloadString, normalizedSignature, config.stripeWebhookSecret);
     } catch (err) {
+      logger.warn({ err }, 'Invalid Stripe signature');
       throw new AppError('Invalid Stripe signature', 'invalid_stripe_signature', 400);
     }
+
+    logger.info({ id: event.id, type: event.type }, 'Received Stripe webhook event');
 
     const rowId = await logAndEnsureEvent(event);
     if (rowId === -1) {
@@ -167,7 +218,8 @@ export const stripeWebhookService: StripeWebhookService = {
           const session = event.data.object as Stripe.Checkout.Session;
           const metadata = (session.metadata ?? {}) as Record<string, any>;
           const plan = getPlanFromMetadata(metadata);
-          const userId = (metadata.user_id as string) || null;
+          const rawUserId = metadata.user_id;
+          const userId = typeof rawUserId === 'string' && rawUserId.trim().length > 0 ? rawUserId : null;
           const stripeCustomerId =
             typeof session.customer === 'string'
               ? (session.customer as string)
@@ -188,18 +240,28 @@ export const stripeWebhookService: StripeWebhookService = {
         }
         case 'customer.subscription.updated': {
           const subscription = event.data.object as Stripe.Subscription;
-          const metadata = (subscription.metadata ?? {}) as Record<string, any>;
-          const plan = getPlanFromMetadata(metadata);
           const stripeCustomerId =
             typeof subscription.customer === 'string'
               ? (subscription.customer as string)
               : (subscription.customer as Stripe.Customer | null)?.id ?? null;
 
-          if (plan && stripeCustomerId) {
-            const userId = await findUserIdByStripeCustomerId(stripeCustomerId);
-            if (userId) {
-              await upsertUserPlan({ userId, plan, stripeCustomerId });
-            }
+          if (!stripeCustomerId) {
+            break;
+          }
+
+          const userId = await findUserIdByStripeCustomerId(stripeCustomerId);
+          if (!userId) {
+            break;
+          }
+
+          if (subscription.status === 'canceled' || subscription.cancel_at_period_end) {
+            await upsertUserPlan({ userId, plan: 'free', stripeCustomerId });
+            break;
+          }
+
+          const plan = await resolvePlanFromSubscription(subscription);
+          if (plan) {
+            await upsertUserPlan({ userId, plan, stripeCustomerId });
           }
           break;
         }
@@ -218,6 +280,21 @@ export const stripeWebhookService: StripeWebhookService = {
           }
           break;
         }
+        case 'customer.subscription.deleted': {
+          const subscription = event.data.object as Stripe.Subscription;
+          const stripeCustomerId =
+            typeof subscription.customer === 'string'
+              ? (subscription.customer as string)
+              : (subscription.customer as Stripe.Customer | null)?.id ?? null;
+
+          if (stripeCustomerId) {
+            const userId = await findUserIdByStripeCustomerId(stripeCustomerId);
+            if (userId) {
+              await upsertUserPlan({ userId, plan: 'free', stripeCustomerId });
+            }
+          }
+          break;
+        }
         default:
           // سایر eventها فقط لاگ می‌شوند و تغییری در plan ایجاد نمی‌کنند
           break;
@@ -226,6 +303,7 @@ export const stripeWebhookService: StripeWebhookService = {
       await markEventProcessed(rowId);
     } catch (err) {
       // اگر منطق تجاری شکست بخورد، processed_at را ست نمی‌کنیم تا امکان retry وجود داشته باشد
+      logger.error({ err, eventId: event.id, eventType: event.type }, 'Error while processing Stripe webhook event');
       if (err instanceof AppError) {
         throw err;
       }

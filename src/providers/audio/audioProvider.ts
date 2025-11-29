@@ -7,6 +7,7 @@ export interface AudioProviderGenerateParams {
 export interface AudioProviderGenerateResult {
   tempFilePath: string;
   format: 'wav' | 'mp3';
+  providerVersion?: string | null;
 }
 
 export interface AudioProvider {

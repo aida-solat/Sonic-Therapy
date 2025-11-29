@@ -1,0 +1,22 @@
+# Fly.io configuration for Ambient Background Music Generator API
+# NOTE: Set `app` to your actual Fly.io app name after running `fly launch`.
+
+app = "ambient-bgm-api"
+primary_region = "ams"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 50
+    soft_limit = 25

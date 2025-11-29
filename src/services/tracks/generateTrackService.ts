@@ -42,75 +42,108 @@ export const generateTrackService: GenerateTrackService = {
     // 5) ffmpeg pipeline → normalized + (optional) watermark + MP3
     const tempDir = os.tmpdir();
     const tempMp3Path = path.join(tempDir, `${trackId}.mp3`);
+    const planInfo = planService.describePlan(user.plan, 0);
+
+    const allowWav = planInfo.allowWav;
+    const tempWavPath = allowWav ? path.join(tempDir, `${trackId}.wav`) : undefined;
 
     const watermarkPath = process.env.WATERMARK_FILE_PATH;
     const applyWatermark = user.plan === 'free' && !!watermarkPath;
 
-    await runFfmpegPipeline({
-      inputPath: providerResult.tempFilePath,
-      outputPath: tempMp3Path,
-      outputFormat: 'mp3',
-      applyWatermark,
-      watermarkPath: applyWatermark ? watermarkPath : undefined
-    });
+    try {
+      await runFfmpegPipeline({
+        inputPath: providerResult.tempFilePath,
+        outputMp3Path: tempMp3Path,
+        outputWavPath: tempWavPath,
+        applyWatermark,
+        watermarkPath: applyWatermark ? watermarkPath : undefined,
+        durationSeconds: request.length,
+        watermarkTailSeconds: 4
+      });
 
-    const planInfo = planService.describePlan(user.plan, 0);
+      // 6) Upload to storage
+      const uploadResult = await supabaseStorageService.uploadTrack({
+        userId: user.id,
+        trackId,
+        localFilePath: tempMp3Path,
+        format: 'mp3'
+      });
 
-    // 6) Upload to storage
-    const uploadResult = await supabaseStorageService.uploadTrack({
-      userId: user.id,
-      trackId,
-      localFilePath: tempMp3Path,
-      format: 'mp3'
-    });
-
-    // 7) Save track metadata
-    const track = await trackMetadataService.save({
-      trackId,
-      userId: user.id,
-      plan: user.plan,
-      request,
-      provider: 'openai',
-      providerVersion: null,
-      watermarked: applyWatermark,
-      commercialLicense: planInfo.commercialLicense,
-      storagePath: uploadResult.storagePath,
-      durationSeconds: request.length,
-      format: 'mp3'
-    });
-
-    const expiresInSeconds = 3600;
-
-    // 8) Generate signed URL
-    const downloadUrl = await supabaseStorageService.getDownloadUrl({
-      storagePath: track.storagePath,
-      expiresInSeconds
-    });
-
-    // 9) Cleanup temp files
-    await fs.unlink(providerResult.tempFilePath).catch(() => {});
-    await fs.unlink(tempMp3Path).catch(() => {});
-
-    // 10) Build response
-    const response: GenerateResponse = {
-      id: track.id,
-      status: 'completed',
-      downloadUrl,
-      format: 'mp3',
-      expiresIn: expiresInSeconds,
-      metadata: {
-        tempo: track.tempo,
-        mood: track.mood,
-        duration: track.durationSeconds,
-        style: track.style,
-        intensity: track.intensity,
-        provider: track.provider,
-        plan: track.plan,
-        watermarked: track.watermarked,
-        commercialLicense: track.commercialLicense
+      let uploadResultWav: { storagePath: string } | undefined;
+      if (allowWav && tempWavPath) {
+        uploadResultWav = await supabaseStorageService.uploadTrack({
+          userId: user.id,
+          trackId,
+          localFilePath: tempWavPath,
+          format: 'wav'
+        });
       }
-    };
 
-    return response;
+      // 7) Save track metadata
+      const track = await trackMetadataService.save({
+        trackId,
+        userId: user.id,
+        plan: user.plan,
+        request,
+        provider: 'openai',
+        providerVersion: providerResult.providerVersion ?? null,
+        watermarked: applyWatermark,
+        commercialLicense: planInfo.commercialLicense,
+        storagePath: uploadResult.storagePath,
+        durationSeconds: request.length,
+        format: 'mp3'
+      });
+
+      const expiresInSeconds = 3600;
+
+      // 8) Generate signed URL
+      const downloadUrl = await supabaseStorageService.getDownloadUrl({
+        storagePath: track.storagePath,
+        expiresInSeconds
+      });
+
+      let downloadUrlWav: string | undefined;
+      if (allowWav && uploadResultWav) {
+        downloadUrlWav = await supabaseStorageService.getDownloadUrl({
+          storagePath: uploadResultWav.storagePath,
+          expiresInSeconds
+        });
+      }
+
+      // 10) Build response
+      const response: GenerateResponse = {
+        id: track.id,
+        status: 'completed',
+        downloadUrl,
+        format: 'mp3',
+        expiresIn: expiresInSeconds,
+        metadata: {
+          tempo: track.tempo,
+          mood: track.mood,
+          duration: track.durationSeconds,
+          style: track.style,
+          intensity: track.intensity,
+          provider: track.provider,
+          plan: track.plan,
+          watermarked: track.watermarked,
+          commercialLicense: track.commercialLicense
+        },
+        ...(allowWav && downloadUrlWav
+          ? {
+              downloadUrlWav,
+              formatWav: 'wav'
+            }
+          : {})
+      };
+
+      return response;
+    } finally {
+      // 9) Cleanup temp files (best-effort)
+      await fs.unlink(providerResult.tempFilePath).catch(() => {});
+      await fs.unlink(tempMp3Path).catch(() => {});
+      if (tempWavPath) {
+        await fs.unlink(tempWavPath).catch(() => {});
+      }
+    }
   }
 };

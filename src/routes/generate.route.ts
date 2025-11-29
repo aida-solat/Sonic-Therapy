@@ -1,4 +1,4 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyRequest, FastifyReply } from 'fastify';
 
 import { GenerateRequest, GenerateResponse } from '../types/domain';
 import { AppError } from '../types/errors';
@@ -20,8 +20,8 @@ function extractApiKey(headers: Record<string, any>): string {
 type GenerateRouteRequest = FastifyRequest<{ Body: GenerateRequest }>;
 type GenerateRouteReply = FastifyReply;
 
-export function registerGenerateRoute(app: FastifyInstance): void {
-  app.post<{ Body: GenerateRequest; Reply: GenerateResponse }>('/api/generate', { schema: GenerateSchema }, async (request: GenerateRouteRequest, reply: GenerateRouteReply) => {
+export function registerGenerateRoute(app: any): void {
+  app.post('/api/generate', { schema: GenerateSchema }, async (request: GenerateRouteRequest, reply: GenerateRouteReply) => {
     const apiKey = extractApiKey(request.headers as Record<string, any>);
     const response = await generateTrackService.generate(request.body, apiKey);
     reply.send(response);

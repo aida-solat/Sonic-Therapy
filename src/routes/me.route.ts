@@ -1,4 +1,4 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyRequest, FastifyReply } from 'fastify';
 
 import { AppError } from '../types/errors';
 import { apiKeyAuthService } from '../services/auth/apiKeyAuthService';
@@ -21,7 +21,7 @@ function extractApiKey(headers: Record<string, any>): string {
 type MeRouteRequest = FastifyRequest;
 type MeRouteReply = FastifyReply;
 
-export function registerMeRoute(app: FastifyInstance): void {
+export function registerMeRoute(app: any): void {
   app.get('/api/me', { schema: MeSchema }, async (request: MeRouteRequest, reply: MeRouteReply) => {
     const apiKey = extractApiKey(request.headers as Record<string, any>);
     const { user } = await apiKeyAuthService.authenticate(apiKey);

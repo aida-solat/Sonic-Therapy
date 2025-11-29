@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { buildApp } from './app';
+import { logger } from './infra/logger';
 
 async function main(): Promise<void> {
   const app = buildApp();
@@ -8,8 +9,9 @@ async function main(): Promise<void> {
 
   try {
     await app.listen({ port, host });
+    logger.info({ port, host }, 'Server listening');
   } catch (error) {
-    console.error(error);
+    logger.error({ err: error }, 'Failed to start server');
     process.exit(1);
   }
 }
