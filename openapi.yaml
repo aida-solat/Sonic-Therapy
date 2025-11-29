@@ -1,0 +1,143 @@
+openapi: 3.1.0
+info:
+  title: Ambient Background Music Generator API
+  version: 1.0.0
+  description: API for generating ambient background music, managing API keys, and handling Stripe billing.
+
+servers:
+  - url: https://your-domain.com
+
+paths:
+  /api/generate:
+    post:
+      summary: Generate an ambient background track
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - mood
+                - style
+                - tempo
+                - length
+              properties:
+                mood:
+                  type: string
+                style:
+                  type: string
+                tempo:
+                  type: integer
+                  minimum: 50
+                  maximum: 90
+                length:
+                  type: integer
+                  minimum: 30
+                  maximum: 120
+                intensity:
+                  type: string
+                  enum: [soft, medium, high]
+      responses:
+        '200':
+          description: Track generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  status:
+                    type: string
+                  downloadUrl:
+                    type: string
+                  format:
+                    type: string
+                    enum: [mp3]
+                  expiresIn:
+                    type: integer
+                  metadata:
+                    type: object
+        '429':
+          description: Quota exceeded
+        '401':
+          description: Unauthorized
+
+  /api/me:
+    get:
+      summary: Get user profile and today's usage
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: User info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  userId:
+                    type: string
+                  plan:
+                    type: string
+                  dailyQuota:
+                    type: integer
+                  usedToday:
+                    type: integer
+                  remainingToday:
+                    type: integer
+
+  /api/keys:
+    post:
+      summary: Create a new API key
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                label:
+                  type: string
+      responses:
+        '200':
+          description: API key created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+                  apiKey: { type: string }
+                  label: { type: string }
+
+  /webhooks/stripe:
+    post:
+      summary: Stripe webhook receiver
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Received
+
+  /healthz:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: http
+      scheme: bearer

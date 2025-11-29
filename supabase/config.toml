@@ -1,0 +1,7 @@
+project_id = "<your-supabase-project-ref>"  # e.g. "abcd1234"
+
+[db]
+port = 54322
+
+[studio]
+port = 54323
