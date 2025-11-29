@@ -5,6 +5,7 @@ import path from 'path';
 
 import { GenerateRequest, GenerateResponse } from '../../types/domain';
 import { apiKeyAuthService } from '../auth/apiKeyAuthService';
+import { apiKeyRateLimitService } from '../auth/apiKeyRateLimitService';
 import { usageService } from '../usage/usageService';
 import { planService } from '../billing/planService';
 import { promptEngine } from '../prompt/promptEngine';
@@ -24,6 +25,8 @@ export const generateTrackService: GenerateTrackService = {
   async generate(request: GenerateRequest, apiKey: string): Promise<GenerateResponse> {
     // 1) Auth by API key
     const { user } = await apiKeyAuthService.authenticate(apiKey);
+
+    apiKeyRateLimitService.check(apiKey);
 
     // 2) Quota check
     await usageService.checkAndConsumeDaily(user, user.plan);

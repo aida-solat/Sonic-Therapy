@@ -15,6 +15,12 @@ export class QuotaExceededError extends AppError {
   }
 }
 
+export class RateLimitExceededError extends AppError {
+  constructor(message = 'Rate limit exceeded') {
+    super(message, 'rate_limit_exceeded', 429);
+  }
+}
+
 export interface ErrorDetails {
   code: string;
   message: string;

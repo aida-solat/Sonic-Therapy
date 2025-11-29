@@ -4,6 +4,7 @@ import type { FastifyInstance } from 'fastify';
 import { buildTestApp, resetDatabase, createTestUserWithApiKey } from '../helpers/testUtils';
 import { supabaseClient } from '../../src/infra/supabaseClient';
 import { supabaseStorageService } from '../../src/services/storage/supabaseStorageService';
+import { apiKeyRateLimitService } from '../../src/services/auth/apiKeyRateLimitService';
 
 vi.mock('../../src/providers/audio/defaultAudioProvider', () => {
   return {
@@ -289,5 +290,32 @@ describe('POST /api/generate', () => {
     const body = response.json() as any;
     expect(body.error.code).toBe('internal_error');
     expect(body.error.status).toBe(500);
+  });
+
+  it('returns 429 when per-API key rate limit is exceeded', async () => {
+    const payload = {
+      mood: 'calm',
+      style: 'ambient',
+      tempo: 80,
+      length: 60
+    };
+
+    for (let i = 0; i < 10; i++) {
+      apiKeyRateLimitService.check(apiKey);
+    }
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/generate',
+      headers: {
+        authorization: `Bearer ${apiKey}`
+      },
+      payload
+    });
+
+    expect(response.statusCode).toBe(429);
+    const body = response.json() as any;
+    expect(body.error.code).toBe('rate_limit_exceeded');
+    expect(body.error.status).toBe(429);
   });
 });
