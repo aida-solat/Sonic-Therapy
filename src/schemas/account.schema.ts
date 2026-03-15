@@ -219,6 +219,29 @@ export const AccountDeleteKeySchema = {
   },
 } as const;
 
+export const AccountDeleteTrackSchema = {
+  params: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['trackId'],
+    properties: {
+      trackId: { type: 'string', format: 'uuid' },
+    },
+  },
+  response: {
+    200: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['success'],
+      properties: {
+        success: { type: 'boolean' },
+      },
+    },
+    '4xx': ErrorResponseSchema,
+    '5xx': ErrorResponseSchema,
+  },
+} as const;
+
 export const AccountMeSchema = {
   response: {
     200: AccountMeResponseSchema,

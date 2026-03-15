@@ -294,6 +294,21 @@ export function DashboardApp() {
   });
   const [ratedTracks, setRatedTracks] = useState<Record<string, number>>({});
 
+  async function handleDeleteTrack(trackId: string) {
+    if (!session?.access_token) return;
+
+    setBusy('delete-track');
+    try {
+      await api.deleteAccountTrack(baseUrl, session.access_token, trackId);
+      setTracks((prev) => prev.filter((t) => t.id !== trackId));
+      toast('success', 'Track deleted.');
+    } catch (cause) {
+      toast('error', cause instanceof Error ? cause.message : 'Failed to delete track');
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function handleRateTrack(trackId: string) {
     if (!session?.access_token) return;
     if (
@@ -1443,6 +1458,34 @@ export function DashboardApp() {
                                       Rate
                                     </button>
                                   )}
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-ghost text-error/60 hover:text-error hover:bg-error/10 gap-1.5 ml-auto"
+                                    disabled={busy === 'delete-track'}
+                                    onClick={() => {
+                                      if (window.confirm('Delete this track permanently?')) {
+                                        void handleDeleteTrack(track.id);
+                                      }
+                                    }}
+                                  >
+                                    <svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      width="14"
+                                      height="14"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="2"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    >
+                                      <polyline points="3 6 5 6 21 6" />
+                                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                      <line x1="10" y1="11" x2="10" y2="17" />
+                                      <line x1="14" y1="11" x2="14" y2="17" />
+                                    </svg>
+                                    {busy === 'delete-track' ? 'Deleting...' : 'Delete'}
+                                  </button>
                                 </div>
 
                                 {/* Inline rating panel */}

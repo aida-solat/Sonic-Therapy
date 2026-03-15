@@ -58,4 +58,15 @@ export const supabaseStorageService: StorageService = {
 
     return data.signedUrl;
   },
+
+  async deleteTrack(storagePaths: string[]): Promise<void> {
+    if (storagePaths.length === 0) return;
+
+    const { error } = await supabaseClient.storage.from(BUCKET_NAME).remove(storagePaths);
+
+    if (error) {
+      logger.error({ err: error, storagePaths }, 'Supabase storage delete failed');
+      throw new AppError(`Failed to delete track files: ${error.message}`, 'storage_error', 500);
+    }
+  },
 };

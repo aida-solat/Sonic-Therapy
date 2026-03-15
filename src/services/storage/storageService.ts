@@ -13,4 +13,5 @@ export interface GetDownloadUrlParams {
 export interface StorageService {
   uploadTrack(params: UploadTrackParams): Promise<{ storagePath: string; contentType: string }>;
   getDownloadUrl(params: GetDownloadUrlParams): Promise<string>;
+  deleteTrack(storagePaths: string[]): Promise<void>;
 }

@@ -7,6 +7,7 @@ import { planService } from '../services/billing/planService';
 import { apiKeyManagementService } from '../services/auth/apiKeyManagementService';
 import { supabaseClient } from '../infra/supabaseClient';
 import { listTracksService } from '../services/tracks/listTracksService';
+import { supabaseStorageService } from '../services/storage/supabaseStorageService';
 import { stripeBillingService } from '../services/billing/stripeBillingService';
 import { evaluationService } from '../services/evaluation/evaluationService';
 import { AppError } from '../types/errors';
@@ -15,6 +16,7 @@ import {
   AccountBillingPortalSchema,
   AccountCreateKeySchema,
   AccountDeleteKeySchema,
+  AccountDeleteTrackSchema,
   AccountKeysListSchema,
   AccountMeSchema,
   AccountTracksSchema,
@@ -119,6 +121,51 @@ export function registerAccountRoute(app: any): void {
       const items = await listTracksService.listForUser(user.id);
 
       reply.send({ items });
+    },
+  );
+
+  app.delete(
+    '/api/account/tracks/:trackId',
+    { schema: AccountDeleteTrackSchema },
+    async (request: FastifyRequest<{ Params: { trackId: string } }>, reply: FastifyReply) => {
+      const accessToken = extractBearerToken(request.headers as Record<string, any>);
+      const { user } = await userSessionAuthService.authenticate(accessToken);
+
+      // Fetch track to get storage paths
+      const { data: track, error: fetchError } = await supabaseClient
+        .from('tracks')
+        .select('id, storage_path, wav_storage_path')
+        .eq('id', request.params.trackId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (fetchError || !track) {
+        throw new AppError('Track not found', 'not_found', 404);
+      }
+
+      // Delete files from storage
+      const pathsToDelete = [track.storage_path];
+      if (track.wav_storage_path) {
+        pathsToDelete.push(track.wav_storage_path);
+      }
+      try {
+        await supabaseStorageService.deleteTrack(pathsToDelete);
+      } catch {
+        // Log but don't block — DB row deletion is more important
+      }
+
+      // Delete track row (cascades to ratings)
+      const { error: deleteError } = await supabaseClient
+        .from('tracks')
+        .delete()
+        .eq('id', track.id)
+        .eq('user_id', user.id);
+
+      if (deleteError) {
+        throw new AppError('Failed to delete track', 'db_error', 500);
+      }
+
+      reply.send({ success: true });
     },
   );
 

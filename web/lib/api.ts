@@ -194,6 +194,20 @@ export const api = {
     });
   },
 
+  async deleteAccountTrack(
+    baseUrl: string,
+    accessToken: string,
+    trackId: string,
+  ): Promise<{ success: boolean }> {
+    return request<{ success: boolean }>(
+      `${normalizeBaseUrl(baseUrl)}/api/account/tracks/${trackId}`,
+      {
+        method: 'DELETE',
+        headers: sessionHeaders(accessToken),
+      },
+    );
+  },
+
   async rateTrack(
     baseUrl: string,
     accessToken: string,
