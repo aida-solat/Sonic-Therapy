@@ -385,7 +385,13 @@ export function DashboardApp() {
     const storedApiKey = window.localStorage.getItem('ambient-web:manual-api-key');
     const storedRevealedKeys = window.localStorage.getItem('ambient-web:revealed-keys');
 
-    if (storedBaseUrl) setBaseUrl(storedBaseUrl);
+    // Only restore cached base URL if it matches the current env default;
+    // stale URLs (e.g. from a previous deployment platform) must be discarded.
+    if (storedBaseUrl && storedBaseUrl === baseUrlDefault) {
+      setBaseUrl(storedBaseUrl);
+    } else if (storedBaseUrl && storedBaseUrl !== baseUrlDefault) {
+      window.localStorage.removeItem('ambient-web:base-url');
+    }
     if (storedApiKey) setManualApiKey(storedApiKey);
     if (storedRevealedKeys)
       setRevealedKeys(JSON.parse(storedRevealedKeys) as Record<string, RevealedKey>);
