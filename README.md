@@ -279,7 +279,7 @@ See `openapi.yaml` for the full contract.
 
 Requires a long-running server (ffmpeg child processes, temp filesystem, webhook handling).
 
-Suitable targets: Fly.io, Railway, Render, Docker on a VM.
+Suitable targets: Render, Docker on a VM.
 
 ```bash
 stripe listen --forward-to localhost:3000/webhooks/stripe
