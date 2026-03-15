@@ -19,29 +19,46 @@ function normalizeBaseUrl(baseUrl: string): string {
   return baseUrl.replace(/\/$/, '');
 }
 
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 3000;
+
 async function request<T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> {
   const hasBody = init?.body !== undefined;
-  const response = await fetch(input, {
-    ...init,
-    headers: {
-      ...(hasBody ? { 'content-type': 'application/json' } : {}),
-      ...(init?.headers ?? {}),
-    },
-  });
+  let lastError: Error | null = null;
 
-  if (!response.ok) {
-    let payload: ErrorResponse | null = null;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      payload = (await response.json()) as ErrorResponse;
-    } catch {
-      payload = null;
-    }
+      const response = await fetch(input, {
+        ...init,
+        headers: {
+          ...(hasBody ? { 'content-type': 'application/json' } : {}),
+          ...(init?.headers ?? {}),
+        },
+      });
 
-    const message = payload?.error?.message ?? `Request failed with status ${response.status}`;
-    throw new Error(message);
+      if (!response.ok) {
+        let payload: ErrorResponse | null = null;
+        try {
+          payload = (await response.json()) as ErrorResponse;
+        } catch {
+          payload = null;
+        }
+
+        const message = payload?.error?.message ?? `Request failed with status ${response.status}`;
+        throw new Error(message);
+      }
+
+      return (await response.json()) as T;
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      const isNetworkError =
+        lastError.message === 'Failed to fetch' || lastError.message.includes('network');
+      if (!isNetworkError || attempt === MAX_RETRIES) break;
+      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+    }
   }
 
-  return (await response.json()) as T;
+  throw lastError!;
 }
 
 function authHeaders(apiKey: string): HeadersInit {

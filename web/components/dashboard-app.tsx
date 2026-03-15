@@ -470,7 +470,14 @@ export function DashboardApp() {
       setAccountKeys(nextKeys.items);
       setTracks(nextTracks.items);
     } catch (cause) {
-      toast('error', cause instanceof Error ? cause.message : 'Failed to load account data');
+      const msg = cause instanceof Error ? cause.message : 'Failed to load account data';
+      const isColdStart = msg === 'Failed to fetch' || msg.includes('network');
+      toast(
+        'error',
+        isColdStart
+          ? 'API is waking up (free tier cold start). Please refresh in a few seconds.'
+          : msg,
+      );
     } finally {
       setBusy(null);
     }
