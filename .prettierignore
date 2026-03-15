@@ -1,0 +1,7 @@
+node_modules
+dist
+coverage
+web/.next
+web/node_modules
+supabase/.temp
+pnpm-lock.yaml

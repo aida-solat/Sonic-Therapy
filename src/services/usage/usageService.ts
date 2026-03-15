@@ -25,37 +25,19 @@ export const usageService: UsageService = {
 
     const date = getTodayDateUtc();
 
-    const { data: rows, error } = await supabaseClient
-      .from('usage_daily')
-      .select('id, requests_count')
-      .eq('user_id', user.id)
-      .eq('date', date);
+    const { data, error } = await supabaseClient.rpc('increment_usage_daily', {
+      p_user_id: user.id,
+      p_date: date,
+    });
 
     if (error) {
-      throw new AppError('Failed to load usage', 'db_error', 500);
+      throw new AppError('Failed to update usage', 'db_error', 500);
     }
 
-    const current = rows && rows[0];
-    const currentCount: number = current?.requests_count ?? 0;
-    const newCount = currentCount + 1;
+    const newCount: number = typeof data === 'number' ? data : 0;
 
     if (newCount > limit) {
       throw new QuotaExceededError();
-    }
-
-    const { error: upsertError } = await supabaseClient
-      .from('usage_daily')
-      .upsert(
-        {
-          user_id: user.id,
-          date,
-          requests_count: newCount
-        },
-        { onConflict: 'user_id,date' }
-      );
-
-    if (upsertError) {
-      throw new AppError('Failed to update usage', 'db_error', 500);
     }
   },
 

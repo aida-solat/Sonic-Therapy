@@ -1,0 +1,157 @@
+@import 'tailwindcss';
+
+@plugin "daisyui" {
+  themes: false;
+  logs: false;
+}
+
+@plugin "daisyui/theme" {
+  name: 'ambient';
+  default: true;
+  prefersdark: true;
+  color-scheme: 'dark';
+  --color-base-100: #0f1b2d;
+  --color-base-200: #16243a;
+  --color-base-300: #3a3222;
+  --color-base-content: #f1ead8;
+  --color-primary: #d4af37;
+  --color-primary-content: #0f1b2d;
+  --color-secondary: #cdbf95;
+  --color-secondary-content: #122038;
+  --color-accent: #ecd9a0;
+  --color-accent-content: #122038;
+  --color-neutral: #132238;
+  --color-neutral-content: #efe6cf;
+  --color-info: #7aa2d6;
+  --color-info-content: #081523;
+  --color-success: #8fbc8f;
+  --color-success-content: #0a1a12;
+  --color-warning: #f0c66a;
+  --color-warning-content: #201503;
+  --color-error: #d97777;
+  --color-error-content: #230909;
+  --radius-selector: 0.7rem;
+  --radius-field: 0.85rem;
+  --radius-box: 1rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 0.5px;
+  --depth: 1;
+  --noise: 0;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at top left, rgba(212, 175, 55, 0.08), transparent 22%),
+      radial-gradient(circle at top right, rgba(205, 191, 149, 0.08), transparent 20%),
+      linear-gradient(180deg, #0c1627 0%, #0f1b2d 45%, #122038 100%);
+    color: var(--color-base-content);
+    font-family: var(--font-body), sans-serif;
+    letter-spacing: 0.01em;
+    text-rendering: optimizeLegibility;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(241, 234, 216, 0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(241, 234, 216, 0.025) 1px, transparent 1px);
+    background-size: 44px 44px;
+    opacity: 0.24;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  .font-display {
+    font-family: var(--font-display), sans-serif;
+    letter-spacing: -0.04em;
+    line-height: 0.96;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  select:focus,
+  input:focus,
+  textarea:focus {
+    border-color: #d4b037 !important;
+    outline-color: #d4b037 !important;
+    box-shadow: 0 0 0 0.5px #d4b037;
+  }
+}
+
+@layer components {
+  .app-shell {
+    @apply relative z-10 mx-auto w-full max-w-7xl px-4 py-5 md:px-6 md:py-8;
+  }
+
+  .ambient-surface {
+    @apply rounded-[1.2rem] border border-base-300/70 bg-base-200/72 shadow-xl shadow-black/10 backdrop-blur-md;
+  }
+
+  .ambient-hero {
+    background:
+      radial-gradient(circle at top right, rgba(212, 175, 55, 0.12), transparent 32%),
+      linear-gradient(180deg, rgba(22, 36, 58, 0.92), rgba(15, 27, 45, 0.9));
+  }
+
+  .editorial-kicker {
+    @apply text-[0.68rem] uppercase tracking-[0.28em] text-primary/80;
+  }
+
+  .editorial-title {
+    font-family: var(--font-display), sans-serif;
+    text-wrap: balance;
+    font-weight: 600;
+    letter-spacing: -0.045em;
+    color: var(--color-base-content);
+  }
+
+  .editorial-copy {
+    @apply leading-7 text-base-content/70;
+  }
+
+  .ambient-panel {
+    @apply rounded-[1rem] border border-base-300/70 bg-base-100/52;
+  }
+
+  .ambient-subpanel {
+    @apply rounded-[1rem] border border-base-300/70 bg-base-100/58 p-4;
+  }
+
+  .ambient-metric-tile {
+    @apply rounded-[0.95rem] border border-base-300/70 bg-base-100/62 p-4;
+  }
+
+  .ambient-status-chip {
+    @apply inline-flex items-center gap-2 rounded-full border border-base-300/70 bg-base-100/60 px-3 py-2 text-[0.7rem] uppercase tracking-[0.14em];
+  }
+
+  .ambient-empty {
+    @apply rounded-[1.1rem] border border-dashed border-base-300/85 bg-base-100/42 p-6;
+  }
+
+  .ambient-empty-title {
+    font-family: var(--font-display), sans-serif;
+    font-size: 1.5rem;
+    line-height: 1;
+    font-weight: 600;
+    color: var(--color-base-content);
+  }
+
+  .ambient-empty-copy {
+    @apply mt-3 max-w-xl leading-7 text-base-content/64;
+  }
+}

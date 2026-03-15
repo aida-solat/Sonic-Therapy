@@ -13,32 +13,31 @@ export function registerHealthRoute(app: any): void {
         db.status = 'error';
         db.error = 'Supabase query failed';
       }
-    } catch (err: any) {
+    } catch {
       db.status = 'error';
-      db.error = err?.message ?? 'Unknown error';
+      db.error = 'Database check failed';
     }
 
     try {
       const { error } = await supabaseClient.storage.from('tracks').list('', { limit: 1 });
       if (error) {
         storage.status = 'error';
-        storage.error = 'Supabase storage list failed';
+        storage.error = 'Storage check failed';
       }
-    } catch (err: any) {
+    } catch {
       storage.status = 'error';
-      storage.error = err?.message ?? 'Unknown error';
+      storage.error = 'Storage check failed';
     }
 
     try {
-      const endpoint = process.env.OPENAI_AUDIO_ENDPOINT;
       const fetchFn: any = (globalThis as any).fetch;
-      if (!endpoint || !config.openAiApiKey || typeof fetchFn !== 'function') {
+      if (!config.openAiAudioEndpoint || !config.openAiApiKey || typeof fetchFn !== 'function') {
         provider.status = 'error';
-        provider.error = 'Provider configuration or fetch missing';
+        provider.error = 'Provider not configured';
       }
-    } catch (err: any) {
+    } catch {
       provider.status = 'error';
-      provider.error = err?.message ?? 'Unknown error';
+      provider.error = 'Provider check failed';
     }
 
     const overallStatus = db.status === 'ok' && storage.status === 'ok' && provider.status === 'ok' ? 'ok' : 'error';

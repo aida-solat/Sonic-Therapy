@@ -1,15 +1,16 @@
+# Implementation Blueprint – Sonic Therapy Platform
 
-# Implementation Blueprint – Ambient Background Music Generator API (v1)
+This document translates the soft-design and ADRs into a **practical implementation roadmap**.
 
-این داک، طراحی نرم (soft-design) و ADRها را به یک **نقشه‌ی پیاده‌سازی عملی** تبدیل می‌کند.
+Current phase: **v1 product slice – personalized music therapy, ambient generation, Supabase-backed, multi-model fallback, sync generation, dashboard + API**
 
-فاز فعلی: **v1 (MVP) – Supabase-only, single audio provider, sync generation, API-only**
+Built by **Deciwa**.
 
 ---
 
-## 1) ساختار فولدرهای Fastify (پروژه Node.js + TypeScript)
+## 1) Fastify Folder Structure (Node.js + TypeScript Project)
 
-پیشنهاد ساختار ریپو:
+Proposed repository structure:
 
 ```text
 ambient-bgm-api/
@@ -17,154 +18,188 @@ ambient-bgm-api/
   tsconfig.json
   .env.example
   src/
-    index.ts                 # entrypoint: ساخت Fastify instance و ثبت routeها
-    app.ts                   # buildApp(): ساخت و کانفیگ Fastify (برای تست و runtime)
+    index.ts                 # Entrypoint: create Fastify instance and register routes
+    app.ts                   # buildApp(): build and configure Fastify (for testing and runtime)
 
     config/
-      env.ts                 # خواندن و validate کردن env (Supabase, Stripe, provider, ...)
+      env.ts                 # Read and validate env vars (Supabase, Stripe, provider, ...)
 
     infra/
-      supabaseClient.ts      # ساخت Supabase client (Postgrest + Storage)
-      stripeClient.ts        # ساخت Stripe client
-      ffmpeg.ts              # wrapper برای اجرای ffmpeg (child_process یا fluent-ffmpeg)
+      supabaseClient.ts      # Create Supabase client (Postgrest + Storage)
+      stripeClient.ts        # Create Stripe client
+      ffmpeg.ts              # Wrapper for running ffmpeg (child_process or fluent-ffmpeg)
 
     routes/
       generate.route.ts      # POST /api/generate
+      therapy.route.ts       # POST /api/generate/therapy
       keys.route.ts          # POST /api/keys
       me.route.ts            # GET /api/me
+      account.route.ts       # GET/POST/DELETE /api/account/*
       stripeWebhook.route.ts # POST /webhooks/stripe
       health.route.ts        # GET /healthz
       tracks.route.ts        # (Future) GET /api/tracks/:id
 
-    schemas/                 # JSON Schemas برای Fastify (body/params/response)
+    schemas/                 # JSON Schemas for Fastify (body/params/response)
       generate.schema.ts
+      therapy.schema.ts
       keys.schema.ts
       me.schema.ts
+      account.schema.ts
+      stripeWebhook.schema.ts
       error.schema.ts
 
     services/
       auth/
-        apiKeyAuthService.ts     # validate API key و برگرداندن user
+        apiKeyAuthService.ts     # Validate API key and return user
+        apiKeyManagementService.ts # Create, list, delete API keys
+        apiKeyRateLimitService.ts  # Per-key rate limiting
+        userSessionAuthService.ts# Validate Supabase session bearer tokens
       billing/
-        planService.ts           # logic پلن و محدودیت‌ها
-        stripeWebhookService.ts  # پردازش رویدادهای Stripe
+        planService.ts           # Plan logic and limits
+        stripeWebhookService.ts  # Process Stripe events
+        stripeBillingService.ts  # Create checkout and portal sessions
       usage/
         usageService.ts          # UsageDaily + quota check
       tracks/
-        generateTrackService.ts  # orchestration کامل generate ترک
-        trackMetadataService.ts  # CRUD ساده روی metadata ترک‌ها (future)
+        generateTrackService.ts  # Full track generation orchestration
+        trackMetadataService.ts  # Track persistence and metadata mapping
+        listTracksService.ts     # Dashboard track history listing
+      therapy/
+        frequencyMappingService.ts  # Goal → brainwave band + Solfeggio + smart tempo + session phases
+        therapyPromptEngine.ts      # Therapy-aware prompt building with cultural healing modes
+        binauralMixService.ts       # Binaural beat + Solfeggio mixing via ffmpeg
+        generateTherapyTrackService.ts  # Full therapy track orchestration
       prompt/
-        promptEngine.ts          # ساخت prompt از روی ورودی‌های API
+        promptEngine.ts          # Build prompt from API inputs
+        promptRetrieval.ts       # RAG retrieval with cosine similarity
       storage/
-        storageService.ts        # abstraction برای Storage (Supabase در v1)
+        storageService.ts        # Storage abstraction interface
+        supabaseStorageService.ts # Supabase Storage implementation
 
     providers/
       audio/
-        audioProvider.ts         # interface AudioProvider
-        defaultAudioProvider.ts  # پیاده‌سازی v1 (OpenAI یا Suno)
+        audioProvider.ts              # AudioProvider interface
+        defaultAudioProvider.ts       # OpenAI audio provider
+        replicateMusicGenProvider.ts  # Meta MusicGen via Replicate (primary)
+        multiProviderWithFallback.ts  # Sequential fallback orchestrator
 
     types/
-      domain.ts                  # تایپ‌های domain-level: User, Plan, TrackMetadata, ...
-      errors.ts                  # error codes و کلاس‌های خطا
+      domain.ts                  # Domain-level types: User, Plan, TrackMetadata, ...
+      errors.ts                  # Error codes and error classes
 
   tests/
     unit/
     integration/
+
+  web/
+    app/
+    components/
+      dashboard-app.tsx        # Main dashboard with ambient generation + library
+      therapy-panel.tsx         # Multi-step therapy questionnaire
+    lib/
+      api.ts                   # API client (generateTrack, generateTherapyTrack, etc.)
+      types.ts                 # Frontend types (AccountTrackItem, TherapyFrequencyTarget, etc.)
+      download.ts              # Fetch-and-save download helper for cross-origin Supabase URLs
+      supabase-browser.ts      # Supabase browser client
 ```
 
 ---
 
-## 2) طراحی کامل لایه Service
+## 2) Complete Service Layer Design
 
 ### 2.1 Auth & API Key Service
 
-- **فایل:** `src/services/auth/apiKeyAuthService.ts`
-- **مسئولیت‌ها:**
-  - خواندن `Authorization: Bearer <API_KEY>`.
-  - پیدا کردن `ApiKey` در DB از روی `key_hash`.
-  - برگرداندن `user` + `plan` + اطلاعات پایه.
-  - مدیریت وضعیت کلید (active/disabled/revoked).
-- **اینترفیس پیشنهادی (مفهومی):**
+- **File:** `src/services/auth/apiKeyAuthService.ts`
+- **Responsibilities:**
+  - Read `Authorization: Bearer <API_KEY>`.
+  - Look up `ApiKey` in the DB by `key_hash`.
+  - Return `user` + `plan` + basic info.
+  - Manage key status (active/disabled/revoked).
+- **Proposed interface (conceptual):**
 
 ```ts
 interface ApiKeyAuthService {
-  authenticate(apiKey: string): Promise<{ user: User; apiKey: ApiKey }>
+  authenticate(apiKey: string): Promise<{ user: User; apiKey: ApiKey }>;
 }
 ```
 
 ### 2.2 Plan & Billing Service
 
-- **فایل:** `src/services/billing/planService.ts`
-- **مسئولیت‌ها:**
-  - map کردن `user.plan` → quota روزانه، امکانات (MP3/WAV, watermark, commercial_license).
-  - منطق اینکه پلن Free/Billing/Pro/Ultra چه حقوقی دارد.
-- **فایل:** `src/services/billing/stripeWebhookService.ts`
-- **مسئولیت‌ها:**
-  - validate امضای Stripe.
-  - ذخیره‌ی event در `stripe_webhook_events`.
-  - آپدیت `user.plan`, `stripe_customer_id`, وضعیت subscription.
+- **File:** `src/services/billing/planService.ts`
+- **Responsibilities:**
+  - Map `user.plan` → daily quota, features (MP3/WAV, watermark, commercial_license).
+  - Logic for what permissions Free/Basic/Pro/Ultra plans grant.
+- **File:** `src/services/billing/stripeWebhookService.ts`
+- **Responsibilities:**
+  - Validate Stripe signature.
+  - Store event in `stripe_webhook_events`.
+  - Update `user.plan`, `stripe_customer_id`, subscription state.
 
 ### 2.3 Usage & Quota Service
 
-- **فایل:** `src/services/usage/usageService.ts`
-- **مسئولیت‌ها:**
-  - قبل از هر generate:
-    - شروع transaction.
-    - پیدا/ایجاد رکورد `UsageDaily (user_id, date)`.
-    - مقایسه `requests_count` با `plan_limit`.
-    - افزایش شمارنده و commit.
-  - پرتاب خطای domain-level `QuotaExceededError` در صورت عبور از حد.
-- **اینترفیس:**
+- **File:** `src/services/usage/usageService.ts`
+- **Responsibilities:**
+  - Before each generate:
+    - Begin transaction.
+    - Find/create `UsageDaily (user_id, date)` record.
+    - Compare `requests_count` against `plan_limit`.
+    - Increment counter and commit.
+  - Throw domain-level `QuotaExceededError` if the limit is exceeded.
+- **Interface:**
 
 ```ts
 interface UsageService {
-  checkAndConsumeDaily(user: User, plan: Plan): Promise<void>
+  checkAndConsumeDaily(user: User, plan: Plan): Promise<void>;
 }
 ```
 
 ### 2.4 Prompt Engine Service
 
-- **فایل:** `src/services/prompt/promptEngine.ts`
-- **مسئولیت‌ها:**
-  - validate مقادیر mood/style/tempo/length/intensity در سطح domain (یا rely on schema).
-  - اعمال default برای `intensity = "medium"` در صورت نبود.
-  - ساخت template نهایی مطابق soft-design.
-- **اینترفیس:**
+- **File:** `src/services/prompt/promptEngine.ts`
+- **Responsibilities:**
+  - Validate mood/style/tempo/length/intensity values at the domain level (or rely on schema).
+  - Apply default `intensity = "medium"` if not provided.
+  - Use **mood-specific descriptors** (e.g., romantic → "warm harmonies, gentle swells, intimate feel") and **style-specific descriptors** (e.g., jazz → "gentle swing rhythms, soft brushed drums, walking bass").
+  - Include **intensity-aware dynamics**: soft (minimal layers, gentle), medium (balanced), high (full layers, driving rhythm).
+  - Build the final prompt by dynamically combining mood descriptors, style descriptors, tempo, length, and intensity.
+- **Interface:**
 
 ```ts
 interface PromptEngine {
-  buildPrompt(input: GenerateRequest): PromptPayload
+  buildPrompt(input: GenerateRequest): PromptPayload;
 }
 ```
 
+- **Key design:** Adding a new mood or style only requires adding a descriptor entry to the lookup maps — no engine logic changes needed.
+
 ### 2.5 Audio Generation / Track Service
 
-- **فایل:** `src/services/tracks/generateTrackService.ts`
-- **مسئولیت‌ها (orchestration):**
+- **File:** `src/services/tracks/generateTrackService.ts`
+- **Responsibilities (orchestration):**
   1. Auth → user + plan.
   2. Quota → `usageService.checkAndConsumeDaily`.
   3. Prompt → `promptEngine.buildPrompt`.
   4. Audio Provider → `audioProvider.generateTrack(prompt, options)`.
-  5. ffmpeg pipeline → normalize + watermark (اگر Free) + encoding MP3/WAV.
-  6. Storage → upload فایل‌ها به Supabase Storage.
-  7. DB → نوشتن `Track` row با metadata کامل.
-  8. ساخت response payload شامل `download_url` و metadata.
-- **اینترفیس:**
+  5. ffmpeg pipeline → normalize + watermark (if Free) + encoding MP3/WAV.
+  6. Storage → upload files to Supabase Storage.
+  7. DB → write `Track` row with full metadata.
+  8. Build response payload including `download_url` and metadata.
+- **Interface:**
 
 ```ts
 interface GenerateTrackService {
-  generate(request: GenerateRequest, apiKey: string): Promise<GenerateResponse>
+  generate(request: GenerateRequest, apiKey: string): Promise<GenerateResponse>;
 }
 ```
 
 ### 2.6 Storage Service
 
-- **فایل:** `src/services/storage/storageService.ts`
-- **مسئولیت‌ها:**
-  - abstraction روی Supabase Storage.
-  - آپلود ترک نهایی (MP3 و در صورت نیاز WAV).
-  - تولید Signed URL با TTL.
-- **اینترفیس:**
+- **File:** `src/services/storage/storageService.ts`
+- **Responsibilities:**
+  - Abstraction over Supabase Storage.
+  - Upload final track (MP3 and optionally WAV).
+  - Generate Signed URLs with TTL.
+- **Interface:**
 
 ```ts
 interface StorageService {
@@ -175,26 +210,23 @@ interface StorageService {
     format: 'mp3' | 'wav';
   }): Promise<{ storagePath: string }>;
 
-  getDownloadUrl(params: {
-    storagePath: string;
-    expiresInSeconds: number;
-  }): Promise<string>;
+  getDownloadUrl(params: { storagePath: string; expiresInSeconds: number }): Promise<string>;
 }
 ```
 
 ### 2.7 Stripe Webhook Service
 
-- **فایل:** `src/services/billing/stripeWebhookService.ts`
-- **مسئولیت‌ها:**
-  - پردازش رویدادهای `checkout.session.completed`, `customer.subscription.updated`, `invoice.payment_failed`.
-  - log کردن همه‌ی events در `stripe_webhook_events`.
-  - به‌روزرسانی plan و subscription state.
+- **File:** `src/services/billing/stripeWebhookService.ts`
+- **Responsibilities:**
+  - Process events: `checkout.session.completed`, `customer.subscription.updated`, `invoice.payment_failed`.
+  - Log all events in `stripe_webhook_events`.
+  - Update plan and subscription state.
 
 ---
 
-## 3) طراحی Supabase SQL Schema (migration-ready)
+## 3) Supabase SQL Schema Design (migration-ready)
 
-نکته: نام جداول پیشنهادی؛ در محیط Supabase می‌توان آن‌ها را در `public` schema ایجاد کرد. اگر از Supabase Auth استفاده شود، می‌توان `user_id` را به `auth.users` رفرنس داد.
+Note: These are proposed table names; in Supabase they can be created in the `public` schema. If Supabase Auth is used, `user_id` can reference `auth.users`.
 
 ### 3.1 Enum Types
 
@@ -219,7 +251,7 @@ CREATE TABLE public.app_users (
 );
 ```
 
-> اگر از Supabase Auth (`auth.users`) استفاده شود، می‌توان `app_users.id` را با `auth.users.id` sync یا مستقیماً از `auth.users` استفاده کرد. این داک ساده‌ترین حالت (جدول مستقل) را نشان می‌دهد.
+> If Supabase Auth (`auth.users`) is used, `app_users.id` can be synced with `auth.users.id` or `auth.users` can be used directly. This document shows the simplest approach (standalone table).
 
 ### 3.3 Table: api_keys
 
@@ -244,13 +276,14 @@ CREATE TABLE public.tracks (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES public.app_users (id) ON DELETE CASCADE,
   storage_path text NOT NULL,
+  wav_storage_path text,
   format text NOT NULL CHECK (format IN ('mp3', 'wav')),
   duration_seconds integer NOT NULL CHECK (duration_seconds > 0),
 
   mood text NOT NULL,
   style text NOT NULL,
-  tempo integer NOT NULL CHECK (tempo BETWEEN 50 AND 90),
-  length integer NOT NULL CHECK (length BETWEEN 30 AND 120),
+  tempo integer NOT NULL,
+  length integer NOT NULL,
   intensity intensity_level NOT NULL DEFAULT 'medium',
 
   provider text NOT NULL,
@@ -258,6 +291,9 @@ CREATE TABLE public.tracks (
   plan plan_type NOT NULL,
   watermarked boolean NOT NULL DEFAULT false,
   commercial_license boolean NOT NULL DEFAULT false,
+
+  track_type text NOT NULL DEFAULT 'standard' CHECK (track_type IN ('standard', 'therapy')),
+  therapy_frequency jsonb,
 
   created_at timestamptz NOT NULL DEFAULT now()
 );
@@ -294,76 +330,92 @@ CREATE TABLE public.stripe_webhook_events (
 
 ---
 
-## 4) اسکلت کامل Endpointها (Fastify)
+## 4) Complete Endpoint Skeleton (Fastify)
 
-در ادامه، اسکلت routeها و اتصال‌شان به سرویس‌ها را تعریف می‌کنیم. (کد نهایی در `src/routes/*.route.ts` پیاده‌سازی می‌شود.)
+Below we define the route skeletons and their connections to services. (Final code is implemented in `src/routes/*.route.ts`.)
 
 ### 4.1 POST /api/generate
 
-- **فایل:** `src/routes/generate.route.ts`
-- **Flow سطح بالا handler:**
+- **File:** `src/routes/generate.route.ts`
+- **High-level handler flow:**
 
 ```ts
-fastify.post('/api/generate', {
-  schema: GenerateSchema,
-}, async (request, reply) => {
-  const apiKey = extractApiKey(request.headers);
-  const response = await generateTrackService.generate(request.body, apiKey);
-  reply.send(response);
-});
+fastify.post(
+  '/api/generate',
+  {
+    schema: GenerateSchema,
+  },
+  async (request, reply) => {
+    const apiKey = extractApiKey(request.headers);
+    const response = await generateTrackService.generate(request.body, apiKey);
+    reply.send(response);
+  },
+);
 ```
 
 - **Dependencies:** `ApiKeyAuthService`, `UsageService`, `PromptEngine`, `AudioProvider`, `StorageService`.
 
 ### 4.2 POST /api/keys
 
-- **فایل:** `src/routes/keys.route.ts`
-- **نکته:** پشت user-auth است (نه API key). در v1 ممکن است این route فقط برای internal/CLI استفاده شود.
+- **File:** `src/routes/keys.route.ts`
+- **Note:** Behind user-auth (not API key). In v1 this route may only be used internally/CLI.
 
 ```ts
-fastify.post('/api/keys', {
-  preHandler: requireUserAuth, // session/JWT
-  schema: CreateApiKeySchema,
-}, async (request, reply) => {
-  const apiKey = await apiKeyService.createForUser(request.user.id, request.body.label);
-  reply.send(apiKey);
-});
+fastify.post(
+  '/api/keys',
+  {
+    preHandler: requireUserAuth, // session/JWT
+    schema: CreateApiKeySchema,
+  },
+  async (request, reply) => {
+    const apiKey = await apiKeyService.createForUser(request.user.id, request.body.label);
+    reply.send(apiKey);
+  },
+);
 ```
 
 ### 4.3 GET /api/me
 
-- **فایل:** `src/routes/me.route.ts`
+- **File:** `src/routes/me.route.ts`
 - **Auth:** API key
 
 ```ts
-fastify.get('/api/me', {
-  schema: MeSchema,
-}, async (request, reply) => {
-  const apiKey = extractApiKey(request.headers);
-  const { user } = await apiKeyAuthService.authenticate(apiKey);
-  const usage = await usageService.getTodayUsage(user.id);
-  const planInfo = planService.describePlan(user.plan, usage.requestsCount);
-  reply.send({ user, ...planInfo });
-});
+fastify.get(
+  '/api/me',
+  {
+    schema: MeSchema,
+  },
+  async (request, reply) => {
+    const apiKey = extractApiKey(request.headers);
+    const { user } = await apiKeyAuthService.authenticate(apiKey);
+    const usage = await usageService.getTodayUsage(user.id);
+    const planInfo = planService.describePlan(user.plan, usage.requestsCount);
+    reply.send({ user, ...planInfo });
+  },
+);
 ```
 
 ### 4.4 POST /webhooks/stripe
 
-- **فایل:** `src/routes/stripeWebhook.route.ts`
+- **File:** `src/routes/stripeWebhook.route.ts`
 
 ```ts
-fastify.post('/webhooks/stripe', {
-  config: { rawBody: true },
-}, async (request, reply) => {
-  await stripeWebhookService.handleEvent(request.rawBody, request.headers['stripe-signature']);
-  reply.code(200).send({ received: true });
-});
+fastify.post(
+  '/webhooks/stripe',
+  {
+    config: { rawBody: true },
+  },
+  async (request, reply) => {
+    await stripeWebhookService.handleEvent(request.rawBody, request.headers['stripe-signature']);
+    reply.code(200).send({ received: true });
+  },
+);
 ```
 
 ### 4.5 GET /healthz
 
-- **فایل:** `src/routes/health.route.ts`
-- **هدف:** health check ساده (DB + provider readiness).
+- **File:** `src/routes/health.route.ts`
+- **Purpose:** Simple health check (DB + provider readiness).
 
 ```ts
 fastify.get('/healthz', async () => ({ status: 'ok' }));
@@ -371,37 +423,33 @@ fastify.get('/healthz', async () => ({ status: 'ok' }));
 
 ### 4.6 (Future) GET /api/tracks/:id
 
-- **فایل:** `src/routes/tracks.route.ts`
-- **هدف:** بازگرداندن metadata ترک و لینک دانلود جدید.
+- **File:** `src/routes/tracks.route.ts`
+- **Purpose:** Return track metadata and a fresh download link.
 
 ---
 
 ## 5) Provider Adapter Structure
 
-### 5.1 Interface عمومی Provider
+### 5.1 Generic Provider Interface
 
-- **فایل:** `src/providers/audio/audioProvider.ts`
+- **File:** `src/providers/audio/audioProvider.ts`
 
 ```ts
 export interface AudioProvider {
-  generateTrack(params: {
-    prompt: string;
-    tempo: number;
-    lengthSeconds: number;
-  }): Promise<{
-    /** مسیر فایل موقتی خروجی provider (مثلاً WAV) */
+  generateTrack(params: { prompt: string; tempo: number; lengthSeconds: number }): Promise<{
+    /** Temporary file path of the provider output (e.g., WAV) */
     tempFilePath: string;
     format: 'wav' | 'mp3';
   }>;
 }
 ```
 
-### 5.2 پیاده‌سازی v1 – defaultAudioProvider
+### 5.2 v1 Implementation – defaultAudioProvider
 
-- **فایل:** `src/providers/audio/defaultAudioProvider.ts`
-- **نکته:**
-  - در env مشخص می‌شود که provider فعلی `openai` است یا `suno`.
-  - این فایل در v1 فقط یکی از آن‌ها را پیاده‌سازی می‌کند.
+- **File:** `src/providers/audio/defaultAudioProvider.ts`
+- **Note:**
+  - The active provider (`openai` or `suno`) is specified via env vars.
+  - This file implements only one of them in v1.
 
 ```ts
 export class DefaultAudioProvider implements AudioProvider {
@@ -413,7 +461,7 @@ export class DefaultAudioProvider implements AudioProvider {
 }
 ```
 
-در v2، می‌توان چند کلاس (`OpenAIAudioProvider`, `SunoAudioProvider`) و یک factory برای انتخاب provider اضافه کرد.
+In v2, multiple classes (`OpenAIAudioProvider`, `SunoAudioProvider`) and a factory for provider selection can be added.
 
 ---
 
@@ -421,7 +469,7 @@ export class DefaultAudioProvider implements AudioProvider {
 
 ### 6.1 Interface
 
-- **فایل:** `src/services/storage/storageService.ts`
+- **File:** `src/services/storage/storageService.ts`
 
 ```ts
 export interface StorageService {
@@ -432,76 +480,120 @@ export interface StorageService {
     format: 'mp3' | 'wav';
   }): Promise<{ storagePath: string }>;
 
-  getDownloadUrl(params: {
-    storagePath: string;
-    expiresInSeconds: number;
-  }): Promise<string>;
+  getDownloadUrl(params: { storagePath: string; expiresInSeconds: number }): Promise<string>;
 }
 ```
 
 ### 6.2 SupabaseStorageService (v1)
 
-- **فایل:** `src/services/storage/supabaseStorageService.ts`
-- **مسئولیت‌ها:**
-  - map کردن `userId` + `trackId` → مسیر `storage_path` مثل:
+- **File:** `src/services/storage/supabaseStorageService.ts`
+- **Responsibilities:**
+  - Map `userId` + `trackId` → `storage_path`, e.g.:
     - `tracks/{userId}/{trackId}.mp3`
-  - استفاده از Supabase JS client برای `upload` و `createSignedUrl`.
+  - Use the Supabase JS client for `upload` and `createSignedUrl`.
 
-در آینده، در صورت مهاجرت به S3، فقط implementation عوض می‌شود، نه interface.
+In the future, if migrating to S3, only the implementation changes — not the interface.
 
 ---
 
 ## 7) ffmpeg Pipeline Blueprint
 
-### 7.1 هدف
+### 7.1 Purpose
 
-Pipeline ffmpeg وظیفه دارد:
+The ffmpeg pipeline is responsible for:
 
-- گرفتن خروجی خام provider (مثلاً WAV).
-- normalize کردن بلندی صدا.
-- افزودن watermark (در صورت Free plan).
-- encode نهایی به MP3 192kbps (و در صورت نیاز WAV).
+- Taking the raw provider output (e.g., WAV).
+- Normalizing audio loudness.
+- Applying fade-in (3s) and fade-out (4s).
+- Adding a watermark (if Free plan).
+- For therapy tracks: mixing binaural beats and optional Solfeggio tones with 3-phase frequency ramping.
+- Final encoding to MP3 192kbps (and optionally WAV).
 
-### 7.2 مراحل پردازش
+### 7.2 Processing Steps
 
-1. **دریافت فایل خام**
-   - `tempInputPath` از `AudioProvider.generateTrack`.
-2. **تبدیل به فرمت پایه** (اگر لازم بود):
-   - نمونه: WAV، 44.1kHz, 16-bit stereo.
+1. **Receive raw file**
+   - `tempInputPath` from `AudioProvider.generateTrack`.
+2. **Convert to base format** (if needed):
+   - Example: WAV, 44.1kHz, 16-bit stereo.
 3. **Normalize Loudness**
-   - استفاده از فیلتر `loudnorm` در ffmpeg برای سطح بلندی یکنواخت.
-4. **افزودن Watermark (فقط Free plan)**
-   - watermarkFile: یک فایل WAV کوتاه ثابت از Supabase Storage (یا local asset).
-   - mix کردن watermark فقط در ۳–۵ ثانیه‌ی پایانی ترک با فیلتر `amix` یا `adelay + amix`.
-   - gain watermark از config خوانده می‌شود تا خیلی آزاردهنده نباشد.
-5. **Encode به MP3 (و WAV برای Pro/Ultra)**
-   - MP3: bitrate حداقل 192kbps.
-   - اگر plan اجازه دهد، خروجی WAV نیز ذخیره می‌شود.
-6. **خروجی**
-   - مسیر `tempMp3Path` (و در صورت نیاز `tempWavPath`).
-   - این مسیرها بعداً توسط `StorageService.uploadTrack` به Supabase ارسال می‌شوند.
+   - Use the `loudnorm` filter in ffmpeg for consistent loudness levels.
+4. **Add Watermark (Free plan only)**
+   - watermarkFile: a static short WAV file from Supabase Storage (or a local asset).
+   - Mix the watermark into only the last 3–5 seconds of the track using `amix` or `adelay + amix` filters.
+   - Watermark gain is read from config to keep it non-intrusive.
+5. **Encode to MP3 (and WAV for Pro/Ultra)**
+   - MP3: minimum bitrate of 192kbps.
+   - If the plan allows it, a WAV output is also saved.
+6. **Output**
+   - Paths `tempMp3Path` (and optionally `tempWavPath`).
+   - These paths are later sent to Supabase via `StorageService.uploadTrack`.
 7. **Cleanup**
-   - حذف فایل‌های موقتی بعد از آپلود موفق (در بلاک `finally`).
+   - Delete temporary files after successful upload (in the `finally` block).
 
-### 7.3 ماژول ffmpeg Wrapper
+### 7.3 ffmpeg Wrapper Module
 
-- **فایل:** `src/infra/ffmpeg.ts`
-- **گزینه‌ها:**
-  - استفاده از `child_process.spawn` و اجرای commandهای ffmpeg.
-  - یا استفاده از کتابخانه‌ای مانند `fluent-ffmpeg`.
-- **الگو:**
-  - هر عملیات، یک تابع async که ورودی/خروجی فایل را می‌گیرد و Promise برمی‌گرداند.
-  - logging مناسب برای مدت زمان پردازش و خطاها.
+- **File:** `src/infra/ffmpeg.ts`
+- **Options:**
+  - Use `child_process.spawn` to run ffmpeg commands.
+  - Or use a library such as `fluent-ffmpeg`.
+- **Pattern:**
+  - Each operation is an async function that takes input/output file paths and returns a Promise.
+  - Appropriate logging for processing duration and errors.
 
 ---
 
-## جمع‌بندی
+## 8) Dashboard Component Architecture
 
-- این blueprint به‌صورت مستقیم قابل تبدیل به:
-  - ساختار فولدر در `src/`.
-  - فایل‌های migration Supabase (SQL).
-  - اسکلت اولیه‌ی Fastify routes + services.
-- گام بعدی پیشنهادی:
-  - ایجاد فولدر `src/` و فایل‌های حداقلی مطابق این ساختار.
-  - اضافه‌کردن migrationها (به‌صورت SQL یا Supabase migration scripts).
+### 8.1 Main Component
 
+- **File:** `web/components/dashboard-app.tsx`
+- **Responsibilities:**
+  - Session management (sign-in/sign-up via Supabase Auth)
+  - API key lifecycle (create, select with "in-use" indicator, delete)
+  - Tab system: Ambient Music | Therapy
+  - Ambient music generation with form inputs (mood, style, tempo, length, intensity)
+  - Full-panel progress view with percentage and ETA (unified for both modes)
+  - Unified post-generation: success toast → track appears in library
+  - Library with search, type/mood/style dropdown filters, and pagination
+  - Therapy frequency metadata chips on therapy track cards (wave band, binaural Hz, Solfeggio Hz)
+  - Exclusive audio playback (one track at a time)
+  - Stripe billing integration (checkout and portal)
+
+### 8.2 Therapy Panel
+
+- **File:** `web/components/therapy-panel.tsx`
+- **Responsibilities:**
+  - Multi-step questionnaire: goal → body area/emotion → genre → cultural healing mode → settings
+  - 20 therapeutic goals organized by category (Physical, Emotional, Mental, Cognitive, Peak Performance)
+  - Cultural healing mode selection (Chinese Five-Element, Indian Raga, Ottoman Maqam)
+  - Generation with full-panel progress view
+  - Toast notification on success, return to settings step
+
+### 8.3 Theme and Styling
+
+- **File:** `web/app/globals.css`
+- Custom DaisyUI theme (`ambient`) with:
+  - Dark navy background (`#0f1b2d`)
+  - Gold primary color (`#d4af37`)
+  - Gold-tinted borders (`#3a3222`, `0.5px` width)
+  - Gold focus rings on all inputs/selects
+  - "Designed & built by Deciwa" footer
+
+---
+
+## Summary
+
+- This blueprint is directly translatable into:
+  - Folder structure in `src/`.
+  - Supabase migration files (SQL).
+  - Initial Fastify route + service skeletons.
+  - Dashboard components in `web/`.
+- Current status:
+  - All backend services, routes, and migrations are implemented (0001–0007).
+  - Dashboard is fully functional with polished UX and unified generation experience.
+  - Prompt engine uses intelligent mood/style descriptors.
+  - Therapy mode with binaural beats, Solfeggio tones, session phasing, smart tempo, and cultural healing modes.
+  - Therapy frequency metadata stored and displayed in library.
+  - Professional fade-in/fade-out on all tracks.
+  - No hard limits on track parameters.
+  - Full API key lifecycle (create, select, delete) is supported.

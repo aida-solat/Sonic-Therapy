@@ -1,37 +1,46 @@
 {
-  "name": "ambient-bgm-api",
-  "version": "0.1.1",
-  "description": "Ambient Background Music Generator API (Fastify, TypeScript, Supabase, OpenAI)",
-  "main": "dist/index.js",
-  "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
-    "build": "tsc -p tsconfig.json",
-    "start": "node dist/index.js",
-    "test": "VITE_CJS_IGNORE_WARNING=true vitest",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\""
-  },
-  "dependencies": {
-    "@fastify/cors": "^11.1.0",
-    "@fastify/formbody": "^8.0.2",
-    "@supabase/supabase-js": "2.86.0",
-    "dotenv": "^17.2.3",
-    "fastify": "^5.6.2",
-    "pino": "^9.0.0",
-    "stripe": "^20.0.0"
-  },
-  "devDependencies": {
-    "@types/node": "^24.10.1",
-    "@typescript-eslint/eslint-plugin": "^8.48.0",
-    "@typescript-eslint/parser": "^8.48.0",
-    "eslint": "^9.39.1",
-    "eslint-plugin-import": "^2.32.0",
-    "ts-node-dev": "^2.0.0",
-    "typescript": "^5.6.0",
-    "vitest": "^4.0.14"
-  },
-  "engines": {
-    "node": "24.11.1",
-    "pnpm": "10.24.0"
-  }
+    "name": "ambient-bgm-api",
+    "version": "0.1.1",
+    "description": "Ambient Background Music Generator API (Fastify, TypeScript, Supabase, OpenAI)",
+    "main": "dist/index.js",
+    "scripts": {
+        "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+        "build": "tsc -p tsconfig.json",
+        "start": "node dist/index.js",
+        "format": "prettier --write \"{src,tests,web}/**/*.{ts,tsx,js,jsx,json,md,yml,yaml,cjs,mjs,css}\" \"*.{json,md,yml,yaml}\"",
+        "format:check": "prettier --check \"{src,tests,web}/**/*.{ts,tsx,js,jsx,json,md,yml,yaml,cjs,mjs,css}\" \"*.{json,md,yml,yaml}\"",
+        "test": "VITE_CJS_IGNORE_WARNING=true vitest",
+        "typecheck": "tsc -p tsconfig.json --noEmit",
+        "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\"",
+        "web:dev": "pnpm --dir web dev",
+        "web:build": "pnpm --dir web build",
+        "web:start": "pnpm --dir web start",
+        "web:typecheck": "pnpm --dir web typecheck"
+    },
+    "dependencies": {
+        "@fastify/cors": "^11.1.0",
+        "@fastify/formbody": "^8.0.2",
+        "@supabase/supabase-js": "2.86.0",
+        "dotenv": "^17.2.3",
+        "fastify": "^5.6.2",
+        "fastify-raw-body": "^5.0.0",
+        "pino": "^9.0.0",
+        "replicate": "^1.4.0",
+        "stripe": "^20.0.0"
+    },
+    "devDependencies": {
+        "@types/node": "^24.10.1",
+        "@typescript-eslint/eslint-plugin": "^8.48.0",
+        "@typescript-eslint/parser": "^8.48.0",
+        "eslint": "^9.39.1",
+        "eslint-plugin-import": "^2.32.0",
+        "prettier": "^3.6.2",
+        "ts-node-dev": "^2.0.0",
+        "typescript": "^5.6.0",
+        "vitest": "^4.0.14"
+    },
+    "engines": {
+        "node": ">=24.0.0",
+        "pnpm": ">=10.24.0"
+    }
 }

@@ -1,23 +1,11 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 
-import { AppError } from '../types/errors';
 import { apiKeyAuthService } from '../services/auth/apiKeyAuthService';
 import { apiKeyRateLimitService } from '../services/auth/apiKeyRateLimitService';
 import { usageService } from '../services/usage/usageService';
 import { planService } from '../services/billing/planService';
 import { MeSchema } from '../schemas/me.schema';
-
-function extractApiKey(headers: Record<string, any>): string {
-  const header = headers['authorization'] || headers['Authorization'];
-  if (!header || typeof header !== 'string') {
-    throw new AppError('Missing Authorization header', 'missing_authorization_header', 401);
-  }
-  const [scheme, token] = header.split(' ');
-  if (scheme !== 'Bearer' || !token) {
-    throw new AppError('Invalid Authorization header', 'invalid_authorization_header', 401);
-  }
-  return token;
-}
+import { extractApiKey } from '../utils/extractApiKey';
 
 type MeRouteRequest = FastifyRequest;
 type MeRouteReply = FastifyReply;

@@ -1,22 +1,35 @@
 import fastify, { FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import formbody from '@fastify/formbody';
+import rawBody from 'fastify-raw-body';
 
+import { config } from './config/env';
 import { loggerOptions } from './infra/logger';
 import { registerHealthRoute } from './routes/health.route';
 import { registerGenerateRoute } from './routes/generate.route';
 import { registerKeysRoute } from './routes/keys.route';
 import { registerMeRoute } from './routes/me.route';
 import { registerStripeWebhookRoute } from './routes/stripeWebhook.route';
+import { registerAccountRoute } from './routes/account.route';
+import { registerTherapyRoute } from './routes/therapy.route';
 import { AppError, ErrorResponse } from './types/errors';
 
 export function buildApp(): FastifyInstance {
   const app = fastify({
-    logger: loggerOptions
+    logger: loggerOptions,
   });
 
-  app.register(cors);
+  app.register(cors, {
+    origin: config.corsOrigins,
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  });
   app.register(formbody);
+  app.register(rawBody, {
+    field: 'rawBody',
+    global: false,
+    runFirst: true,
+    encoding: false,
+  });
 
   app.setErrorHandler((error: any, request: any, reply: any) => {
     let status: number;
@@ -41,8 +54,8 @@ export function buildApp(): FastifyInstance {
       error: {
         code,
         message,
-        status
-      }
+        status,
+      },
     };
 
     app.log.error(
@@ -51,9 +64,9 @@ export function buildApp(): FastifyInstance {
         url: request.raw.url,
         method: request.raw.method,
         status,
-        code
+        code,
       },
-      'Request failed'
+      'Request failed',
     );
 
     void reply.status(status).send(payload);
@@ -63,7 +76,9 @@ export function buildApp(): FastifyInstance {
   registerGenerateRoute(app);
   registerKeysRoute(app);
   registerMeRoute(app);
+  registerAccountRoute(app);
   registerStripeWebhookRoute(app);
+  registerTherapyRoute(app);
 
   return app;
 }

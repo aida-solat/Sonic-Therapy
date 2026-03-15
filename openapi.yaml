@@ -2,7 +2,10 @@ openapi: 3.1.0
 info:
   title: Ambient Background Music Generator API
   version: 1.0.0
-  description: API for generating ambient background music, managing API keys, and handling Stripe billing.
+  description: >
+    API for generating ambient background music tracks with configurable mood,
+    style, tempo, length, and intensity. Includes API key management, usage
+    tracking, account management, and Stripe billing integration.
 
 servers:
   - url: https://your-domain.com
@@ -11,6 +14,7 @@ paths:
   /api/generate:
     post:
       summary: Generate an ambient background track
+      operationId: generateTrack
       security:
         - ApiKeyAuth: []
       requestBody:
@@ -18,81 +22,54 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - mood
-                - style
-                - tempo
-                - length
-              properties:
-                mood:
-                  type: string
-                style:
-                  type: string
-                tempo:
-                  type: integer
-                  minimum: 50
-                  maximum: 90
-                length:
-                  type: integer
-                  minimum: 30
-                  maximum: 120
-                intensity:
-                  type: string
-                  enum: [soft, medium, high]
+              $ref: '#/components/schemas/GenerateRequest'
       responses:
         '200':
           description: Track generated successfully
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  status:
-                    type: string
-                  downloadUrl:
-                    type: string
-                  format:
-                    type: string
-                    enum: [mp3]
-                  expiresIn:
-                    type: integer
-                  metadata:
-                    type: object
-        '429':
-          description: Quota exceeded
-        '401':
-          description: Unauthorized
-
-  /api/me:
-    get:
-      summary: Get user profile and today's usage
-      security:
-        - ApiKeyAuth: []
-      responses:
-        '200':
-          description: User info
+                $ref: '#/components/schemas/GenerateResponse'
+        '400':
+          description: Validation error
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  userId:
-                    type: string
-                  plan:
-                    type: string
-                  dailyQuota:
-                    type: integer
-                  usedToday:
-                    type: integer
-                  remainingToday:
-                    type: integer
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - missing or invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '402':
+          description: Payment required - plan does not allow this operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Quota or rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
-  /api/keys:
+  /api/generate/therapy:
     post:
-      summary: Create a new API key
+      summary: Generate a therapeutic music track with binaural beat entrainment
+      operationId: generateTherapyTrack
+      description: >
+        Generates a music track in the user's preferred genre, layered with
+        binaural beats at a frequency mapped to the specified therapeutic goal.
+        Optionally includes Solfeggio tones. Requires headphones for the
+        binaural beat effect.
       security:
         - ApiKeyAuth: []
       requestBody:
@@ -100,25 +77,249 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                label:
-                  type: string
+              $ref: '#/components/schemas/TherapyRequest'
+      responses:
+        '200':
+          description: Therapy track generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TherapyResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - missing or invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Quota or rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/me:
+    get:
+      summary: Get user profile and today's usage
+      operationId: getMe
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: User info with usage stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/keys:
+    post:
+      summary: Create a new API key
+      operationId: createApiKey
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountCreateKeyRequest'
       responses:
         '200':
           description: API key created
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  id: { type: string }
-                  apiKey: { type: string }
-                  label: { type: string }
+                $ref: '#/components/schemas/CreateApiKeyResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/account/me:
+    get:
+      summary: Get the signed-in account profile and usage
+      operationId: getAccountMe
+      security:
+        - SessionBearerAuth: []
+      responses:
+        '200':
+          description: Account details and usage snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountMeResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/account/keys:
+    get:
+      summary: List API keys for the signed-in account
+      operationId: listAccountKeys
+      security:
+        - SessionBearerAuth: []
+      responses:
+        '200':
+          description: API keys owned by the signed-in account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountKeysResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Create an API key for the signed-in account
+      operationId: createAccountKey
+      security:
+        - SessionBearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountCreateKeyRequest'
+      responses:
+        '200':
+          description: API key created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateApiKeyResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/account/tracks:
+    get:
+      summary: List track history for the signed-in account
+      operationId: listAccountTracks
+      security:
+        - SessionBearerAuth: []
+      responses:
+        '200':
+          description: Recent generated tracks with signed download URLs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountTracksResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/account/billing/checkout-session:
+    post:
+      summary: Create a Stripe checkout session for a paid plan
+      operationId: createAccountCheckoutSession
+      security:
+        - SessionBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BillingCheckoutRequest'
+      responses:
+        '200':
+          description: Checkout session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillingSessionResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/account/billing/portal-session:
+    post:
+      summary: Create a Stripe billing portal session
+      operationId: createAccountPortalSession
+      security:
+        - SessionBearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BillingPortalRequest'
+      responses:
+        '200':
+          description: Billing portal session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BillingSessionResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /webhooks/stripe:
     post:
       summary: Stripe webhook receiver
+      operationId: stripeWebhook
       requestBody:
         required: true
         content:
@@ -127,17 +328,575 @@ paths:
               type: object
       responses:
         '200':
-          description: Received
+          description: Webhook processed
 
   /healthz:
     get:
       summary: Health check
+      operationId: healthCheck
       responses:
         '200':
-          description: OK
+          description: Service health status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
 
 components:
   securitySchemes:
     ApiKeyAuth:
       type: http
       scheme: bearer
+    SessionBearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    GenerateRequest:
+      type: object
+      required:
+        - mood
+        - style
+        - tempo
+        - length
+      properties:
+        mood:
+          type: string
+          enum: [calm, focus, energetic, dark, dreamy, romantic, melancholy, uplifting]
+          description: Mood of the track
+        style:
+          type: string
+          enum: [ambient, lofi, cinematic, electronic, classical, nature, jazz, chillhop]
+          description: Musical style
+        tempo:
+          type: integer
+          minimum: 1
+          description: Tempo in BPM
+        length:
+          type: integer
+          minimum: 1
+          description: Track length in seconds
+        intensity:
+          type: string
+          enum: [soft, medium, high]
+          default: medium
+          description: Intensity level
+
+    GenerateResponse:
+      type: object
+      required:
+        - id
+        - status
+        - downloadUrl
+        - format
+        - expiresIn
+        - metadata
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [completed]
+        downloadUrl:
+          type: string
+          format: uri
+          description: Signed URL for the MP3 download
+        format:
+          type: string
+          enum: [mp3]
+        expiresIn:
+          type: integer
+          description: URL expiration time in seconds
+        metadata:
+          $ref: '#/components/schemas/TrackMetadata'
+        downloadUrlWav:
+          type: string
+          format: uri
+          description: Signed URL for the WAV download (Pro and Ultra plans only)
+        formatWav:
+          type: string
+          enum: [wav]
+
+    TrackMetadata:
+      type: object
+      required:
+        - tempo
+        - mood
+        - duration
+        - style
+        - intensity
+        - provider
+        - plan
+        - watermarked
+        - commercialLicense
+      properties:
+        tempo:
+          type: integer
+        mood:
+          type: string
+        duration:
+          type: integer
+          description: Duration in seconds
+        style:
+          type: string
+        intensity:
+          type: string
+          enum: [soft, medium, high]
+        provider:
+          type: string
+          enum: [openai]
+        providerVersion:
+          type: string
+          nullable: true
+        plan:
+          type: string
+          enum: [free, basic, pro, ultra]
+        watermarked:
+          type: boolean
+        commercialLicense:
+          type: boolean
+
+    MeResponse:
+      type: object
+      required:
+        - userId
+        - plan
+        - dailyQuota
+        - usedToday
+        - remainingToday
+      properties:
+        userId:
+          type: string
+          format: uuid
+        plan:
+          type: string
+          enum: [free, basic, pro, ultra]
+        dailyQuota:
+          type: integer
+        usedToday:
+          type: integer
+        remainingToday:
+          type: integer
+
+    AccountMeResponse:
+      allOf:
+        - $ref: '#/components/schemas/MeResponse'
+        - type: object
+          required:
+            - email
+            - hasBillingCustomer
+          properties:
+            email:
+              type: string
+              format: email
+            stripeCustomerId:
+              type: string
+              nullable: true
+            hasBillingCustomer:
+              type: boolean
+
+    AccountApiKeyItem:
+      type: object
+      required:
+        - id
+        - label
+        - status
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [active, disabled, revoked]
+        lastUsedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    AccountKeysResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccountApiKeyItem'
+
+    AccountCreateKeyRequest:
+      type: object
+      properties:
+        label:
+          type: string
+          description: Human-readable label for the API key
+
+    AccountTrackItem:
+      type: object
+      required:
+        - id
+        - format
+        - createdAt
+        - downloadUrl
+        - metadata
+      properties:
+        id:
+          type: string
+          format: uuid
+        format:
+          type: string
+          enum: [mp3, wav]
+        createdAt:
+          type: string
+          format: date-time
+        downloadUrl:
+          type: string
+          format: uri
+        downloadUrlWav:
+          type: string
+          format: uri
+        formatWav:
+          type: string
+          enum: [wav]
+        trackType:
+          type: string
+          enum: [standard, therapy]
+          description: Whether the track is a standard ambient track or a therapy track with binaural beats
+        therapyFrequency:
+          $ref: '#/components/schemas/TherapyFrequencyTarget'
+          description: Frequency metadata for therapy tracks (null for standard tracks)
+        metadata:
+          $ref: '#/components/schemas/TrackMetadata'
+
+    AccountTracksResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccountTrackItem'
+
+    CreateApiKeyResponse:
+      type: object
+      required:
+        - id
+        - apiKey
+      properties:
+        id:
+          type: string
+          format: uuid
+        apiKey:
+          type: string
+          description: The raw API key shown only once
+        label:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    BillingCheckoutRequest:
+      type: object
+      required:
+        - plan
+        - successUrl
+        - cancelUrl
+      properties:
+        plan:
+          type: string
+          enum: [basic, pro, ultra]
+        successUrl:
+          type: string
+          format: uri
+        cancelUrl:
+          type: string
+          format: uri
+
+    BillingPortalRequest:
+      type: object
+      required:
+        - returnUrl
+      properties:
+        returnUrl:
+          type: string
+          format: uri
+
+    BillingSessionResponse:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          format: uri
+
+    HealthResponse:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy, ok]
+        checks:
+          type: object
+          properties:
+            database:
+              $ref: '#/components/schemas/HealthCheck'
+            storage:
+              $ref: '#/components/schemas/HealthCheck'
+            provider:
+              $ref: '#/components/schemas/HealthCheck'
+        db:
+          $ref: '#/components/schemas/HealthCheck'
+        storage:
+          $ref: '#/components/schemas/HealthCheck'
+        provider:
+          $ref: '#/components/schemas/HealthCheck'
+
+    HealthCheck:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [ok, error]
+        error:
+          type: string
+
+    TherapyRequest:
+      type: object
+      required:
+        - goal
+        - genre
+        - durationSeconds
+      properties:
+        goal:
+          type: string
+          enum:
+            - pain_relief
+            - emotion_relief
+            - deep_sleep
+            - anti_aging
+            - healing
+            - rem_sleep
+            - deep_relaxation
+            - meditation
+            - creativity
+            - relaxed_focus
+            - stress_reduction
+            - positive_thinking
+            - fast_learning
+            - focused_attention
+            - cognitive_thinking
+            - problem_solving
+            - active_lifestyle
+            - high_cognition
+            - memory_recall
+            - peak_awareness
+          description: Therapeutic goal — determines brainwave frequency band and Solfeggio tone
+        genre:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Preferred music genre (e.g. "Ambient", "Jazz", "Lo-fi", "Classical")
+        bodyArea:
+          type: string
+          enum:
+            - abdominal
+            - back
+            - chest
+            - chronic
+            - groin
+            - head
+            - hip
+            - joint
+            - knee
+            - leg
+            - muscle
+            - nerve
+            - painful_sex
+            - penis_pain
+            - period
+            - shoulder
+          description: Target body area for pain relief (required when goal is pain_relief)
+        emotion:
+          type: string
+          enum:
+            - anger
+            - guilt
+            - shame
+            - depression
+            - annoyance
+            - hurt
+            - hostility
+            - fear
+            - anxiety
+            - loneliness
+            - boredom
+            - embarrassment
+            - envy
+            - contempt
+            - despair
+            - sadness
+            - disgust
+            - disappointment
+            - frustration
+            - hate
+            - jealousy
+            - pride
+            - surprise
+            - confusion
+          description: Target emotion for emotion relief (required when goal is emotion_relief)
+        culturalMode:
+          type: string
+          enum:
+            - chinese_five_element
+            - indian_raga
+            - ottoman_maqam
+          description: Optional cultural healing tradition to layer into the track
+        durationSeconds:
+          type: integer
+          minimum: 1
+          description: Track duration in seconds
+        intensity:
+          type: string
+          enum: [soft, medium, high]
+          default: medium
+          description: Intensity level of the music
+
+    TherapyResponse:
+      type: object
+      required:
+        - id
+        - status
+        - downloadUrl
+        - format
+        - expiresIn
+        - metadata
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [completed]
+        downloadUrl:
+          type: string
+          format: uri
+          description: Signed URL for the MP3 download (music + binaural beat)
+        format:
+          type: string
+          enum: [mp3]
+        expiresIn:
+          type: integer
+          description: URL expiration time in seconds
+        metadata:
+          $ref: '#/components/schemas/TherapyMetadata'
+        downloadUrlWav:
+          type: string
+          format: uri
+          description: Signed URL for the WAV download (Pro and Ultra plans only)
+        formatWav:
+          type: string
+          enum: [wav]
+
+    TherapyMetadata:
+      type: object
+      required:
+        - goal
+        - genre
+        - duration
+        - intensity
+        - frequency
+        - provider
+        - plan
+        - watermarked
+        - commercialLicense
+      properties:
+        goal:
+          type: string
+        genre:
+          type: string
+        bodyArea:
+          type: string
+        emotion:
+          type: string
+        duration:
+          type: integer
+          description: Duration in seconds
+        intensity:
+          type: string
+          enum: [soft, medium, high]
+        frequency:
+          $ref: '#/components/schemas/TherapyFrequencyTarget'
+        culturalMode:
+          type: string
+          enum:
+            - chinese_five_element
+            - indian_raga
+            - ottoman_maqam
+          description: Cultural healing tradition used (if any)
+        provider:
+          type: string
+        plan:
+          type: string
+          enum: [free, basic, pro, ultra]
+        watermarked:
+          type: boolean
+        commercialLicense:
+          type: boolean
+
+    TherapyFrequencyTarget:
+      type: object
+      required:
+        - band
+        - hz
+        - label
+      properties:
+        band:
+          type: string
+          enum: [delta, theta, alpha, beta, gamma]
+          description: Brainwave frequency band
+        hz:
+          type: number
+          description: Binaural beat frequency in Hz
+        solfeggioHz:
+          type: number
+          description: Solfeggio frequency in Hz (if applicable)
+        label:
+          type: string
+          description: Human-readable description of the frequency target
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+            - status
+          properties:
+            code:
+              type: string
+              description: Machine-readable error code
+            message:
+              type: string
+              description: Human-readable error message
+            status:
+              type: integer
+              description: HTTP status code

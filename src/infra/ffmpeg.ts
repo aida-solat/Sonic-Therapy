@@ -32,17 +32,44 @@ export async function runFfmpegPipeline(params: FfmpegPipelineParams): Promise<v
 
   const filterComplexParts: string[] = [];
 
+  const needsBothOutputs = !!params.outputMp3Path && !!params.outputWavPath;
+
+  const fadeIn = 3;
+  const fadeOut = 4;
+  const dur = params.durationSeconds ?? 0;
+
   if (useWatermark) {
-    const durationSeconds = params.durationSeconds ?? 0;
     const tailSeconds = params.watermarkTailSeconds ?? 4;
-    const offsetSeconds = Math.max(durationSeconds - tailSeconds, 0);
+    const offsetSeconds = Math.max(dur - tailSeconds, 0);
     const offsetMs = Math.round(offsetSeconds * 1000);
 
     filterComplexParts.push('[0:a]loudnorm=I=-16:TP=-1.5:LRA=11[base]');
     filterComplexParts.push(`[1:a]adelay=${offsetMs}|${offsetMs}[wm_delayed]`);
-    filterComplexParts.push('[base][wm_delayed]amix=inputs=2:duration=first:dropout_transition=0[aout]');
+    filterComplexParts.push(
+      '[base][wm_delayed]amix=inputs=2:duration=first:dropout_transition=0[mixed]',
+    );
+    // Fade-in / fade-out for professional start and end
+    const fadeOutStart = Math.max(dur - fadeOut, 0);
+    filterComplexParts.push(
+      `[mixed]afade=t=in:st=0:d=${fadeIn},afade=t=out:st=${fadeOutStart}:d=${fadeOut}[faded]`,
+    );
+    if (needsBothOutputs) {
+      filterComplexParts.push('[faded]asplit=2[aout_mp3][aout_wav]');
+    } else {
+      filterComplexParts.push('[faded]acopy[aout]');
+    }
   } else {
-    filterComplexParts.push('[0:a]loudnorm=I=-16:TP=-1.5:LRA=11[aout]');
+    filterComplexParts.push('[0:a]loudnorm=I=-16:TP=-1.5:LRA=11[normed]');
+    // Fade-in / fade-out for professional start and end
+    const fadeOutStart = Math.max(dur - fadeOut, 0);
+    filterComplexParts.push(
+      `[normed]afade=t=in:st=0:d=${fadeIn},afade=t=out:st=${fadeOutStart}:d=${fadeOut}[faded]`,
+    );
+    if (needsBothOutputs) {
+      filterComplexParts.push('[faded]asplit=2[aout_mp3][aout_wav]');
+    } else {
+      filterComplexParts.push('[faded]acopy[aout]');
+    }
   }
 
   if (filterComplexParts.length > 0) {
@@ -50,11 +77,13 @@ export async function runFfmpegPipeline(params: FfmpegPipelineParams): Promise<v
   }
 
   if (params.outputMp3Path) {
-    args.push('-map', '[aout]', '-vn', '-c:a', 'libmp3lame', '-b:a', '192k', params.outputMp3Path);
+    const mapLabel = needsBothOutputs ? '[aout_mp3]' : '[aout]';
+    args.push('-map', mapLabel, '-vn', '-c:a', 'libmp3lame', '-b:a', '192k', params.outputMp3Path);
   }
 
   if (params.outputWavPath) {
-    args.push('-map', '[aout]', '-vn', '-c:a', 'pcm_s16le', params.outputWavPath);
+    const mapLabel = needsBothOutputs ? '[aout_wav]' : '[aout]';
+    args.push('-map', mapLabel, '-vn', '-c:a', 'pcm_s16le', params.outputWavPath);
   }
 
   await new Promise<void>((resolve, reject) => {
@@ -82,7 +111,9 @@ export async function runFfmpegPipeline(params: FfmpegPipelineParams): Promise<v
           .filter((line) => line.trim().length > 0)
           .slice(-5)
           .join('\n');
-        const message = tail ? `ffmpeg exited with code ${code}: ${tail}` : `ffmpeg exited with code ${code}`;
+        const message = tail
+          ? `ffmpeg exited with code ${code}: ${tail}`
+          : `ffmpeg exited with code ${code}`;
         logger.error({ code, stderrTail: tail, args }, 'ffmpeg process exited with error');
         reject(new AppError(message, 'provider_error', 500));
       }

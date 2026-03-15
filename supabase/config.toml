@@ -1,4 +1,4 @@
-project_id = "<your-supabase-project-ref>"  # e.g. "abcd1234"
+project_id = "<your-supabase-project-ref>"
 
 [db]
 port = 54322

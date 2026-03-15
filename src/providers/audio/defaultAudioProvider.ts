@@ -2,11 +2,15 @@ import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
 
-import { config } from '../../config/env';
+import { config as appConfig } from '../../config/env';
 import { AppError } from '../../types/errors';
 import { logger } from '../../infra/logger';
 
-import { AudioProvider, AudioProviderGenerateParams, AudioProviderGenerateResult } from './audioProvider';
+import {
+  AudioProvider,
+  AudioProviderGenerateParams,
+  AudioProviderGenerateResult,
+} from './audioProvider';
 
 export interface DefaultAudioProviderConfig {
   model: string;
@@ -17,24 +21,24 @@ export interface DefaultAudioProviderConfig {
 export class DefaultAudioProvider implements AudioProvider {
   private readonly config: DefaultAudioProviderConfig;
 
-  constructor(config?: DefaultAudioProviderConfig) {
-    if (config) {
+  constructor(providerConfig?: DefaultAudioProviderConfig) {
+    if (providerConfig) {
       this.config = {
-        ...config,
-        providerVersion: config.providerVersion ?? config.model
+        ...providerConfig,
+        providerVersion: providerConfig.providerVersion ?? providerConfig.model,
       };
     } else {
-      const model = process.env.OPENAI_AUDIO_MODEL ?? 'gpt-4o-mini-tts';
+      const model = appConfig.openAiAudioModel;
       this.config = {
         model,
         parameters: undefined,
-        providerVersion: model
+        providerVersion: model,
       };
     }
   }
 
   async generateTrack(params: AudioProviderGenerateParams): Promise<AudioProviderGenerateResult> {
-    const endpoint = process.env.OPENAI_AUDIO_ENDPOINT;
+    const endpoint = appConfig.openAiAudioEndpoint;
     if (!endpoint) {
       logger.error('OPENAI_AUDIO_ENDPOINT is not configured');
       throw new AppError('OPENAI_AUDIO_ENDPOINT is not configured', 'provider_error', 500);
@@ -51,16 +55,16 @@ export class DefaultAudioProvider implements AudioProvider {
       response = await fetchFn(endpoint, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${config.openAiApiKey}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${appConfig.openAiApiKey}`,
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           model: this.config.model,
           input: params.prompt,
-          tempo: params.tempo,
-          length_seconds: params.lengthSeconds,
-          ...(this.config.parameters ?? {})
-        })
+          voice: 'alloy',
+          response_format: 'wav',
+          ...(this.config.parameters ?? {}),
+        }),
       });
     } catch (error) {
       logger.error({ err: error }, 'Failed to call audio provider');
@@ -70,10 +74,17 @@ export class DefaultAudioProvider implements AudioProvider {
     if (!response || !response.ok) {
       const status = response?.status ?? 'unknown';
       logger.error({ status }, 'Audio provider request failed with non-OK status');
-      throw new AppError(`Audio provider request failed with status ${status}`, 'provider_error', 500);
+      throw new AppError(
+        `Audio provider request failed with status ${status}`,
+        'provider_error',
+        500,
+      );
     }
 
-    const contentType = typeof response.headers?.get === 'function' ? response.headers.get('content-type') ?? '' : '';
+    const contentType =
+      typeof response.headers?.get === 'function'
+        ? (response.headers.get('content-type') ?? '')
+        : '';
 
     let format: 'wav' | 'mp3' = 'wav';
     let extension = 'wav';
@@ -101,7 +112,7 @@ export class DefaultAudioProvider implements AudioProvider {
     return {
       tempFilePath,
       format,
-      providerVersion: this.config.providerVersion ?? null
+      providerVersion: this.config.providerVersion ?? null,
     };
   }
 }

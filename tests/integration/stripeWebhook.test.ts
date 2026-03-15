@@ -23,6 +23,23 @@ function generateStripeSignature(payload: string, secret: string): string {
   });
 }
 
+async function waitForAssertion(assertion: () => Promise<void>, timeoutMs = 15000, intervalMs = 200): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  let lastError: unknown;
+
+  while (Date.now() < deadline) {
+    try {
+      await assertion();
+      return;
+    } catch (error) {
+      lastError = error;
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+  }
+
+  throw lastError;
+}
+
 describe('POST /webhooks/stripe', () => {
   let app: FastifyInstance;
   let userId: string;
@@ -86,32 +103,36 @@ describe('POST /webhooks/stripe', () => {
     expect(body).toEqual({ received: true });
 
     // User plan and stripe_customer_id should be updated
-    const { data: users, error: usersError } = await supabaseClient
-      .from('app_users')
-      .select('plan, stripe_customer_id')
-      .eq('id', userId);
+    await waitForAssertion(async () => {
+      const { data: users, error: usersError } = await supabaseClient
+        .from('app_users')
+        .select('plan, stripe_customer_id')
+        .eq('id', userId);
 
-    expect(usersError).toBeNull();
-    expect(users).not.toBeNull();
-    expect((users ?? []).length).toBe(1);
+      expect(usersError).toBeNull();
+      expect(users).not.toBeNull();
+      expect((users ?? []).length).toBe(1);
 
-    const user = (users ?? [])[0] as any;
-    expect(user.plan).toBe('pro');
-    expect(user.stripe_customer_id).toBe('cus_test_123');
+      const user = (users ?? [])[0] as any;
+      expect(user.plan).toBe('pro');
+      expect(user.stripe_customer_id).toBe('cus_test_123');
+    });
 
     // Webhook event should be logged and marked processed
-    const { data: events, error: eventsError } = await supabaseClient
-      .from('stripe_webhook_events')
-      .select('stripe_event_id, type, processed_at')
-      .eq('stripe_event_id', 'evt_test_1');
+    await waitForAssertion(async () => {
+      const { data: events, error: eventsError } = await supabaseClient
+        .from('stripe_webhook_events')
+        .select('stripe_event_id, type, processed_at')
+        .eq('stripe_event_id', 'evt_test_1');
 
-    expect(eventsError).toBeNull();
-    expect(events).not.toBeNull();
-    expect((events ?? []).length).toBe(1);
+      expect(eventsError).toBeNull();
+      expect(events).not.toBeNull();
+      expect((events ?? []).length).toBe(1);
 
-    const logged = (events ?? [])[0] as any;
-    expect(logged.type).toBe('checkout.session.completed');
-    expect(logged.processed_at).not.toBeNull();
+      const logged = (events ?? [])[0] as any;
+      expect(logged.type).toBe('checkout.session.completed');
+      expect(logged.processed_at).not.toBeNull();
+    });
   });
 
   it('handles customer.subscription.updated by changing existing user plan based on metadata', async () => {
@@ -129,16 +150,18 @@ describe('POST /webhooks/stripe', () => {
     }
 
     async function expectUserPlan(expectedPlan: string): Promise<void> {
-      const { data, error } = await supabaseClient
-        .from('app_users')
-        .select('plan')
-        .eq('id', userId);
+      await waitForAssertion(async () => {
+        const { data, error } = await supabaseClient
+          .from('app_users')
+          .select('plan')
+          .eq('id', userId);
 
-      expect(error).toBeNull();
-      expect(data).not.toBeNull();
-      expect((data ?? []).length).toBe(1);
-      const row = (data ?? [])[0] as any;
-      expect(row.plan).toBe(expectedPlan);
+        expect(error).toBeNull();
+        expect(data).not.toBeNull();
+        expect((data ?? []).length).toBe(1);
+        const row = (data ?? [])[0] as any;
+        expect(row.plan).toBe(expectedPlan);
+      });
     }
 
     async function sendSubscriptionUpdatedEvent(plan: string): Promise<void> {
@@ -242,18 +265,20 @@ describe('POST /webhooks/stripe', () => {
     const body = response.json() as any;
     expect(body).toEqual({ received: true });
 
-    const { data: users, error: usersError } = await supabaseClient
-      .from('app_users')
-      .select('plan, stripe_customer_id')
-      .eq('id', userId);
+    await waitForAssertion(async () => {
+      const { data: users, error: usersError } = await supabaseClient
+        .from('app_users')
+        .select('plan, stripe_customer_id')
+        .eq('id', userId);
 
-    expect(usersError).toBeNull();
-    expect(users).not.toBeNull();
-    expect((users ?? []).length).toBe(1);
+      expect(usersError).toBeNull();
+      expect(users).not.toBeNull();
+      expect((users ?? []).length).toBe(1);
 
-    const user = (users ?? [])[0] as any;
-    expect(user.plan).toBe('free');
-    expect(user.stripe_customer_id).toBe(customerId);
+      const user = (users ?? [])[0] as any;
+      expect(user.plan).toBe('free');
+      expect(user.stripe_customer_id).toBe(customerId);
+    });
   });
 
   it('does not re-process an already processed event (idempotency)', async () => {
@@ -306,29 +331,35 @@ describe('POST /webhooks/stripe', () => {
     expect(response1.statusCode).toBe(200);
 
     // After first processing, user plan should be updated to pro
-    let { data: usersAfterFirst, error: usersErrorFirst } = await supabaseClient
-      .from('app_users')
-      .select('plan')
-      .eq('id', userId);
+    let processedAtFirst: string | null = null;
 
-    expect(usersErrorFirst).toBeNull();
-    expect(usersAfterFirst).not.toBeNull();
-    expect((usersAfterFirst ?? []).length).toBe(1);
-    let userRow = (usersAfterFirst ?? [])[0] as any;
-    expect(userRow.plan).toBe('pro');
+    await waitForAssertion(async () => {
+      const { data: usersAfterFirst, error: usersErrorFirst } = await supabaseClient
+        .from('app_users')
+        .select('plan')
+        .eq('id', userId);
+
+      expect(usersErrorFirst).toBeNull();
+      expect(usersAfterFirst).not.toBeNull();
+      expect((usersAfterFirst ?? []).length).toBe(1);
+      const userRow = (usersAfterFirst ?? [])[0] as any;
+      expect(userRow.plan).toBe('pro');
+    });
 
     // Webhook event should be logged once and marked processed
-    let { data: eventsAfterFirst, error: eventsErrorFirst } = await supabaseClient
-      .from('stripe_webhook_events')
-      .select('stripe_event_id, processed_at')
-      .eq('stripe_event_id', 'evt_idem_1');
+    await waitForAssertion(async () => {
+      const { data: eventsAfterFirst, error: eventsErrorFirst } = await supabaseClient
+        .from('stripe_webhook_events')
+        .select('stripe_event_id, processed_at')
+        .eq('stripe_event_id', 'evt_idem_1');
 
-    expect(eventsErrorFirst).toBeNull();
-    expect(eventsAfterFirst).not.toBeNull();
-    expect((eventsAfterFirst ?? []).length).toBe(1);
-    let eventRow = (eventsAfterFirst ?? [])[0] as any;
-    expect(eventRow.processed_at).not.toBeNull();
-    const processedAtFirst = eventRow.processed_at;
+      expect(eventsErrorFirst).toBeNull();
+      expect(eventsAfterFirst).not.toBeNull();
+      expect((eventsAfterFirst ?? []).length).toBe(1);
+      const eventRow = (eventsAfterFirst ?? [])[0] as any;
+      expect(eventRow.processed_at).not.toBeNull();
+      processedAtFirst = eventRow.processed_at;
+    });
 
     // Second delivery of the exact same event
     const signature2 = generateStripeSignature(payload, webhookSecret);
@@ -345,27 +376,31 @@ describe('POST /webhooks/stripe', () => {
     expect(response2.statusCode).toBe(200);
 
     // User plan should remain pro and not be changed back or modified
-    let { data: usersAfterSecond, error: usersErrorSecond } = await supabaseClient
-      .from('app_users')
-      .select('plan')
-      .eq('id', userId);
+    await waitForAssertion(async () => {
+      const { data: usersAfterSecond, error: usersErrorSecond } = await supabaseClient
+        .from('app_users')
+        .select('plan')
+        .eq('id', userId);
 
-    expect(usersErrorSecond).toBeNull();
-    expect(usersAfterSecond).not.toBeNull();
-    expect((usersAfterSecond ?? []).length).toBe(1);
-    userRow = (usersAfterSecond ?? [])[0] as any;
-    expect(userRow.plan).toBe('pro');
+      expect(usersErrorSecond).toBeNull();
+      expect(usersAfterSecond).not.toBeNull();
+      expect((usersAfterSecond ?? []).length).toBe(1);
+      const userRow = (usersAfterSecond ?? [])[0] as any;
+      expect(userRow.plan).toBe('pro');
+    });
 
     // Event log should still contain a single row and processed_at should not change
-    let { data: eventsAfterSecond, error: eventsErrorSecond } = await supabaseClient
-      .from('stripe_webhook_events')
-      .select('stripe_event_id, processed_at')
-      .eq('stripe_event_id', 'evt_idem_1');
+    await waitForAssertion(async () => {
+      const { data: eventsAfterSecond, error: eventsErrorSecond } = await supabaseClient
+        .from('stripe_webhook_events')
+        .select('stripe_event_id, processed_at')
+        .eq('stripe_event_id', 'evt_idem_1');
 
-    expect(eventsErrorSecond).toBeNull();
-    expect(eventsAfterSecond).not.toBeNull();
-    expect((eventsAfterSecond ?? []).length).toBe(1);
-    eventRow = (eventsAfterSecond ?? [])[0] as any;
-    expect(eventRow.processed_at).toBe(processedAtFirst);
+      expect(eventsErrorSecond).toBeNull();
+      expect(eventsAfterSecond).not.toBeNull();
+      expect((eventsAfterSecond ?? []).length).toBe(1);
+      const eventRow = (eventsAfterSecond ?? [])[0] as any;
+      expect(eventRow.processed_at).toBe(processedAtFirst);
+    });
   });
 });

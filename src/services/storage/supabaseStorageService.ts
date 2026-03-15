@@ -2,13 +2,16 @@ import fs from 'fs/promises';
 
 import { supabaseClient } from '../../infra/supabaseClient';
 import { AppError } from '../../types/errors';
+import { logger } from '../../infra/logger';
 
 import { StorageService, UploadTrackParams, GetDownloadUrlParams } from './storageService';
 
 const BUCKET_NAME = 'tracks';
 
 export const supabaseStorageService: StorageService = {
-  async uploadTrack(params: UploadTrackParams): Promise<{ storagePath: string; contentType: string }> {
+  async uploadTrack(
+    params: UploadTrackParams,
+  ): Promise<{ storagePath: string; contentType: string }> {
     const storagePath = `tracks/${params.userId}/${params.trackId}.${params.format}`;
 
     let fileData: Buffer;
@@ -20,15 +23,17 @@ export const supabaseStorageService: StorageService = {
 
     const contentType = params.format === 'mp3' ? 'audio/mpeg' : 'audio/wav';
 
-    const { error } = await supabaseClient.storage
-      .from(BUCKET_NAME)
-      .upload(storagePath, fileData, {
-        upsert: true,
-        contentType
-      });
+    const { error } = await supabaseClient.storage.from(BUCKET_NAME).upload(storagePath, fileData, {
+      upsert: true,
+      contentType,
+    });
 
     if (error) {
-      throw new AppError('Failed to upload track', 'storage_error', 500);
+      logger.error(
+        { err: error, storagePath, bucket: BUCKET_NAME },
+        'Supabase storage upload failed',
+      );
+      throw new AppError(`Failed to upload track: ${error.message}`, 'storage_error', 500);
     }
 
     return { storagePath, contentType };
@@ -40,9 +45,17 @@ export const supabaseStorageService: StorageService = {
       .createSignedUrl(params.storagePath, params.expiresInSeconds);
 
     if (error || !data?.signedUrl) {
-      throw new AppError('Failed to create signed URL', 'storage_error', 500);
+      logger.error(
+        { err: error, storagePath: params.storagePath },
+        'Supabase signed URL creation failed',
+      );
+      throw new AppError(
+        `Failed to create signed URL: ${error?.message ?? 'no URL returned'}`,
+        'storage_error',
+        500,
+      );
     }
 
     return data.signedUrl;
-  }
+  },
 };

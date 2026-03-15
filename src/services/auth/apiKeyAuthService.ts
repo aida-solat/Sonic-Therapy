@@ -56,6 +56,13 @@ export const apiKeyAuthService: ApiKeyAuthService = {
       label: apiKeyRow.label ?? null
     };
 
+    // Fire-and-forget update of last_used_at
+    supabaseClient
+      .from('api_keys')
+      .update({ last_used_at: new Date().toISOString() })
+      .eq('id', apiKeyRow.id)
+      .then(() => { }, () => { });
+
     return { user, apiKey: apiKeyEntity };
   }
 };

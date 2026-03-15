@@ -12,8 +12,11 @@ export interface SaveTrackParams {
   watermarked: boolean;
   commercialLicense: boolean;
   storagePath: string;
+  wavStoragePath?: string | null;
   durationSeconds: number;
   format: 'mp3' | 'wav';
+  trackType?: 'standard' | 'therapy';
+  therapyFrequency?: { band: string; hz: number; solfeggioHz?: number; label: string } | null;
 }
 
 export interface TrackMetadataService {
@@ -28,6 +31,7 @@ export const trackMetadataService: TrackMetadataService = {
         id: params.trackId,
         user_id: params.userId,
         storage_path: params.storagePath,
+        wav_storage_path: params.wavStoragePath ?? null,
         format: params.format,
         duration_seconds: params.durationSeconds,
         mood: params.request.mood,
@@ -39,7 +43,9 @@ export const trackMetadataService: TrackMetadataService = {
         provider_version: params.providerVersion,
         plan: params.plan,
         watermarked: params.watermarked,
-        commercial_license: params.commercialLicense
+        commercial_license: params.commercialLicense,
+        track_type: params.trackType ?? 'standard',
+        therapy_frequency: params.therapyFrequency ?? null,
       })
       .select('*')
       .single();
@@ -63,10 +69,13 @@ export const trackMetadataService: TrackMetadataService = {
       watermarked: data.watermarked,
       commercialLicense: data.commercial_license,
       storagePath: data.storage_path,
+      wavStoragePath: data.wav_storage_path,
       format: data.format,
-      createdAt: new Date(data.created_at)
+      trackType: data.track_type ?? 'standard',
+      therapyFrequency: data.therapy_frequency ?? null,
+      createdAt: new Date(data.created_at),
     };
 
     return track;
-  }
+  },
 };

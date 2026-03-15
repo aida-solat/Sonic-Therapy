@@ -9,9 +9,12 @@ import { apiKeyRateLimitService } from '../auth/apiKeyRateLimitService';
 import { usageService } from '../usage/usageService';
 import { planService } from '../billing/planService';
 import { promptEngine } from '../prompt/promptEngine';
+import { ReplicateMusicGenProvider } from '../../providers/audio/replicateMusicGenProvider';
 import { DefaultAudioProvider } from '../../providers/audio/defaultAudioProvider';
+import { MultiProviderWithFallback } from '../../providers/audio/multiProviderWithFallback';
 import { runFfmpegPipeline } from '../../infra/ffmpeg';
 import { supabaseStorageService } from '../storage/supabaseStorageService';
+import { config } from '../../config/env';
 
 import { trackMetadataService } from './trackMetadataService';
 
@@ -19,7 +22,18 @@ export interface GenerateTrackService {
   generate(request: GenerateRequest, apiKey: string): Promise<GenerateResponse>;
 }
 
-const audioProvider = new DefaultAudioProvider();
+const audioProvider = new MultiProviderWithFallback([
+  {
+    name: 'replicate-musicgen',
+    provider: new ReplicateMusicGenProvider(),
+    priority: 1,
+  },
+  {
+    name: 'openai-audio',
+    provider: new DefaultAudioProvider(),
+    priority: 2,
+  },
+]);
 
 export const generateTrackService: GenerateTrackService = {
   async generate(request: GenerateRequest, apiKey: string): Promise<GenerateResponse> {
@@ -39,7 +53,7 @@ export const generateTrackService: GenerateTrackService = {
     const providerResult = await audioProvider.generateTrack({
       prompt,
       tempo: request.tempo,
-      lengthSeconds: request.length
+      lengthSeconds: request.length,
     });
 
     // 5) ffmpeg pipeline → normalized + (optional) watermark + MP3
@@ -50,7 +64,7 @@ export const generateTrackService: GenerateTrackService = {
     const allowWav = planInfo.allowWav;
     const tempWavPath = allowWav ? path.join(tempDir, `${trackId}.wav`) : undefined;
 
-    const watermarkPath = process.env.WATERMARK_FILE_PATH;
+    const watermarkPath = config.watermarkFilePath;
     const applyWatermark = user.plan === 'free' && !!watermarkPath;
 
     try {
@@ -61,7 +75,7 @@ export const generateTrackService: GenerateTrackService = {
         applyWatermark,
         watermarkPath: applyWatermark ? watermarkPath : undefined,
         durationSeconds: request.length,
-        watermarkTailSeconds: 4
+        watermarkTailSeconds: 4,
       });
 
       // 6) Upload to storage
@@ -69,7 +83,7 @@ export const generateTrackService: GenerateTrackService = {
         userId: user.id,
         trackId,
         localFilePath: tempMp3Path,
-        format: 'mp3'
+        format: 'mp3',
       });
 
       let uploadResultWav: { storagePath: string } | undefined;
@@ -78,7 +92,7 @@ export const generateTrackService: GenerateTrackService = {
           userId: user.id,
           trackId,
           localFilePath: tempWavPath,
-          format: 'wav'
+          format: 'wav',
         });
       }
 
@@ -93,8 +107,9 @@ export const generateTrackService: GenerateTrackService = {
         watermarked: applyWatermark,
         commercialLicense: planInfo.commercialLicense,
         storagePath: uploadResult.storagePath,
+        wavStoragePath: uploadResultWav?.storagePath ?? null,
         durationSeconds: request.length,
-        format: 'mp3'
+        format: 'mp3',
       });
 
       const expiresInSeconds = 3600;
@@ -102,14 +117,14 @@ export const generateTrackService: GenerateTrackService = {
       // 8) Generate signed URL
       const downloadUrl = await supabaseStorageService.getDownloadUrl({
         storagePath: track.storagePath,
-        expiresInSeconds
+        expiresInSeconds,
       });
 
       let downloadUrlWav: string | undefined;
       if (allowWav && uploadResultWav) {
         downloadUrlWav = await supabaseStorageService.getDownloadUrl({
           storagePath: uploadResultWav.storagePath,
-          expiresInSeconds
+          expiresInSeconds,
         });
       }
 
@@ -129,14 +144,14 @@ export const generateTrackService: GenerateTrackService = {
           provider: track.provider,
           plan: track.plan,
           watermarked: track.watermarked,
-          commercialLicense: track.commercialLicense
+          commercialLicense: track.commercialLicense,
         },
         ...(allowWav && downloadUrlWav
           ? {
               downloadUrlWav,
-              formatWav: 'wav'
+              formatWav: 'wav',
             }
-          : {})
+          : {}),
       };
 
       return response;
@@ -148,5 +163,5 @@ export const generateTrackService: GenerateTrackService = {
         await fs.unlink(tempWavPath).catch(() => {});
       }
     }
-  }
+  },
 };
