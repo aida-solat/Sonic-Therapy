@@ -67,7 +67,8 @@ export default function LoginPage() {
         if (data.session) {
           router.replace('/dashboard');
         } else {
-          toast('success', 'Account created. Check your email to confirm the session.');
+          setAuthMode('sign-in');
+          toast('success', 'Account created! Check your email to confirm, then sign in.');
         }
       }
     } catch (cause) {
