@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: sonic-therapy-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: NODE_ENV
+        value: production
+      - key: WATERMARK_FILE_PATH
+        value: /app/assets/watermark-sample.wav
+      - key: CORS_ORIGINS
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_AUDIO_ENDPOINT
+        sync: false
+      - key: REPLICATE_API_TOKEN
+        sync: false
