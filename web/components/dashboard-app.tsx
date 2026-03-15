@@ -294,10 +294,14 @@ export function DashboardApp() {
   });
   const [ratedTracks, setRatedTracks] = useState<Record<string, number>>({});
 
+  // Delete-track state: which track is pending confirmation / actively deleting
+  const [confirmDeleteTrackId, setConfirmDeleteTrackId] = useState<string | null>(null);
+  const [deletingTrackId, setDeletingTrackId] = useState<string | null>(null);
+
   async function handleDeleteTrack(trackId: string) {
     if (!session?.access_token) return;
 
-    setBusy('delete-track');
+    setDeletingTrackId(trackId);
     try {
       await api.deleteAccountTrack(baseUrl, session.access_token, trackId);
       setTracks((prev) => prev.filter((t) => t.id !== trackId));
@@ -305,7 +309,8 @@ export function DashboardApp() {
     } catch (cause) {
       toast('error', cause instanceof Error ? cause.message : 'Failed to delete track');
     } finally {
-      setBusy(null);
+      setDeletingTrackId(null);
+      setConfirmDeleteTrackId(null);
     }
   }
 
@@ -1461,12 +1466,8 @@ export function DashboardApp() {
                                   <button
                                     type="button"
                                     className="btn btn-sm btn-ghost text-error/60 hover:text-error hover:bg-error/10 gap-1.5 ml-auto"
-                                    disabled={busy === 'delete-track'}
-                                    onClick={() => {
-                                      if (window.confirm('Delete this track permanently?')) {
-                                        void handleDeleteTrack(track.id);
-                                      }
-                                    }}
+                                    disabled={deletingTrackId === track.id}
+                                    onClick={() => setConfirmDeleteTrackId(track.id)}
                                   >
                                     <svg
                                       xmlns="http://www.w3.org/2000/svg"
@@ -1484,7 +1485,7 @@ export function DashboardApp() {
                                       <line x1="10" y1="11" x2="10" y2="17" />
                                       <line x1="14" y1="11" x2="14" y2="17" />
                                     </svg>
-                                    {busy === 'delete-track' ? 'Deleting...' : 'Delete'}
+                                    {deletingTrackId === track.id ? 'Deleting...' : 'Delete'}
                                   </button>
                                 </div>
 
@@ -1804,6 +1805,42 @@ export function DashboardApp() {
           Designed & built by <span className="text-primary/50">Deciwa</span>
         </p>
       </footer>
+
+      {/* ── Delete track confirmation modal (DaisyUI) ── */}
+      <dialog className={`modal ${confirmDeleteTrackId ? 'modal-open' : ''}`}>
+        <div className="modal-box bg-base-200 max-w-sm">
+          <h3 className="font-display text-lg text-base-content">Delete track</h3>
+          <p className="py-4 text-sm text-base-content/70">
+            This will permanently delete this track and its audio files. This action cannot be
+            undone.
+          </p>
+          <div className="modal-action">
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              disabled={!!deletingTrackId}
+              onClick={() => setConfirmDeleteTrackId(null)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-error btn-sm"
+              disabled={!!deletingTrackId}
+              onClick={() => {
+                if (confirmDeleteTrackId) void handleDeleteTrack(confirmDeleteTrackId);
+              }}
+            >
+              {deletingTrackId ? 'Deleting...' : 'Delete'}
+            </button>
+          </div>
+        </div>
+        <form method="dialog" className="modal-backdrop">
+          <button type="button" onClick={() => !deletingTrackId && setConfirmDeleteTrackId(null)}>
+            close
+          </button>
+        </form>
+      </dialog>
     </div>
   );
 }
