@@ -1,4 +1,4 @@
-# Sonic Therapy Platform
+# Sonic Therapy Platform (Personalized music therapy powered by AI)
 
 [![CI](https://github.com/aida-solat/Ambient-Background-Music-Generator-API/actions/workflows/ci.yml/badge.svg)](https://github.com/aida-solat/Ambient-Background-Music-Generator-API/actions/workflows/ci.yml)
 
@@ -11,7 +11,6 @@ Users describe their condition, choose their preferred music genre, set a sessio
 - **Problem solved:** music therapy tools are either basic tone generators or expensive standalone apps — none let users personalize therapeutic audio by combining their pain point, music taste, and session length into one AI-generated track
 - **What was built:** therapy engine, binaural beat pipeline, ambient music generator, browser dashboard, API, auth, billing, and evaluation system
 - **Why it stands out:** domain-specific audio science (brainwave entrainment, Solfeggio tones, session phasing, cultural healing modes) layered on top of full-stack product engineering — not a CRUD demo
-- **Built by:** Deciwa — a one-person engineering studio
 
 ## The Core Idea
 
