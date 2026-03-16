@@ -572,6 +572,9 @@ export default function DocsPage() {
           <Link className="btn btn-ghost btn-sm text-base-content/60" href="/#features">
             Features
           </Link>
+          <Link className="btn btn-ghost btn-sm text-base-content/60" href="/#how-it-works">
+            How It Works
+          </Link>
           <Link className="btn btn-ghost btn-sm text-base-content/60" href="/#pricing">
             Pricing
           </Link>

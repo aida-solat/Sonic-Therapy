@@ -86,8 +86,8 @@ const features = [
         <circle cx="18" cy="16" r="3" />
       </svg>
     ),
-    title: 'AI music generation',
-    text: 'Multi-model fallback (MusicGen → OpenAI) with an intelligent prompt engine. RAG-augmented retrieval over a curated music knowledge base for distinct, high-quality outputs.',
+    title: 'AI prompt engineering + RAG',
+    text: 'Three-iteration prompt strategy (static → descriptor-based → RAG-augmented) with cosine similarity retrieval over a curated music knowledge base. Multi-model orchestration with automatic fallback and per-provider observability.',
   },
   {
     icon: (
@@ -157,16 +157,39 @@ const plans = [
   },
 ];
 
-const techStack = [
-  { name: 'Fastify', role: 'API server' },
-  { name: 'Next.js', role: 'Frontend' },
-  { name: 'Supabase', role: 'Auth & DB' },
-  { name: 'Stripe', role: 'Billing' },
-  { name: 'MusicGen', role: 'Primary AI' },
-  { name: 'OpenAI', role: 'Fallback AI' },
-  { name: 'FFmpeg', role: 'Audio pipeline' },
-  { name: 'TypeScript', role: 'Language' },
-  { name: 'Tailwind', role: 'Styling' },
+const techStackGroups = [
+  {
+    label: 'AI & ML',
+    items: [
+      { name: 'Prompt Engineering', role: '3-iteration prompt strategy with benchmarking' },
+      { name: 'RAG', role: 'Cosine similarity retrieval over music knowledge base' },
+      { name: 'MusicGen (Replicate)', role: 'Primary AI model for music generation' },
+      { name: 'OpenAI', role: 'Fallback AI with multi-model orchestration' },
+      { name: 'Evaluation Framework', role: '4-dimension rating + mood×style matrix' },
+    ],
+  },
+  {
+    label: 'Backend & Infrastructure',
+    items: [
+      { name: 'TypeScript', role: 'Full-stack language' },
+      { name: 'Fastify', role: 'API server' },
+      { name: 'Supabase', role: 'Auth, Postgres DB & Storage' },
+      { name: 'Stripe', role: 'Subscription billing & webhooks' },
+      { name: 'FFmpeg', role: 'Audio pipeline — binaural beats, Solfeggio, fades' },
+    ],
+  },
+  {
+    label: 'Frontend & DevOps',
+    items: [
+      { name: 'Next.js', role: 'React framework' },
+      { name: 'Tailwind + DaisyUI', role: 'Styling & components' },
+      { name: 'Docker', role: 'Containerized deployment' },
+      { name: 'Render + Vercel', role: 'API & frontend hosting' },
+      { name: 'GitHub Actions', role: 'CI pipeline' },
+      { name: 'OpenAPI', role: 'API contract spec' },
+      { name: 'Vitest', role: 'Integration tests' },
+    ],
+  },
 ];
 
 export default function HomePage() {
@@ -209,6 +232,9 @@ export default function HomePage() {
           <a className="btn btn-ghost btn-sm text-base-content/60" href="#pricing">
             Pricing
           </a>
+          <a className="btn btn-ghost btn-sm text-base-content/60" href="#stack">
+            Stack
+          </a>
           <Link className="btn btn-ghost btn-sm text-base-content/60" href="/docs">
             Docs
           </Link>
@@ -232,6 +258,11 @@ export default function HomePage() {
         <p className="mt-6 max-w-2xl text-base leading-relaxed text-base-content/60 md:text-lg">
           Tell us what hurts. Pick the music you love. Get a therapy session built just for you —
           with binaural beat entrainment, Solfeggio frequencies, and cultural healing traditions.
+        </p>
+
+        <p className="mt-3 max-w-xl text-sm text-base-content/40">
+          Built with RAG-augmented prompt engineering, multi-model AI orchestration, and a
+          structured evaluation framework — full-stack AI engineering from research to production.
         </p>
 
         <div className="mt-8 flex flex-wrap justify-center gap-3">
@@ -455,17 +486,26 @@ export default function HomePage() {
       <section id="stack" className="scroll-mt-20">
         <div className="text-center mb-12">
           <p className="editorial-kicker mb-3">Tech stack</p>
-          <h2 className="editorial-title text-3xl md:text-4xl">Built with modern tools</h2>
+          <h2 className="editorial-title text-3xl md:text-4xl">Full-stack AI engineering</h2>
         </div>
 
-        <div className="flex flex-wrap justify-center gap-3">
-          {techStack.map((t) => (
+        <div className="grid gap-6 md:grid-cols-3">
+          {techStackGroups.map((group) => (
             <div
-              key={t.name}
-              className="flex items-center gap-3 rounded-xl border border-base-300/70 bg-base-200/30 px-5 py-3"
+              key={group.label}
+              className="rounded-2xl border border-base-300/70 bg-base-200/40 p-6"
             >
-              <span className="font-display text-base text-base-content">{t.name}</span>
-              <span className="text-xs text-base-content/35">{t.role}</span>
+              <h3 className="font-display text-sm uppercase tracking-wider text-primary mb-4">
+                {group.label}
+              </h3>
+              <div className="space-y-3">
+                {group.items.map((t) => (
+                  <div key={t.name} className="flex flex-col gap-0.5">
+                    <span className="font-display text-sm text-base-content">{t.name}</span>
+                    <span className="text-xs text-base-content/40 leading-relaxed">{t.role}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>

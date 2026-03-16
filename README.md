@@ -74,9 +74,13 @@ Frontend routes:
 - **Storage:** Supabase Storage with signed URLs (1-hour TTL)
 - **Auth:** API keys for generation endpoints, Supabase sessions for dashboard
 - **Billing:** Stripe checkout, billing portal, webhook reconciliation
-- **AI providers:** Replicate MusicGen (primary) → OpenAI Audio (fallback)
+- **AI providers:** Replicate MusicGen (primary) → OpenAI Audio (fallback) via multi-model orchestration
+- **Prompt engineering:** 3-iteration strategy (static → descriptor-based → RAG-augmented), benchmarked across 4 strategies
+- **RAG:** In-memory cosine similarity retrieval with IDF-weighted bag-of-tags over curated music knowledge base
+- **Evaluation:** 4-dimension star ratings (satisfaction, mood accuracy, style accuracy, audio quality) with mood×style matrix
 - **Audio pipeline:** ffmpeg for normalization, fades, watermarking, binaural beat mixing, Solfeggio layering, and format conversion
 - **Therapy engine:** frequency mapping → session phasing → smart tempo → therapy-aware prompts → cultural healing modes → binaural mix
+- **DevOps:** Docker, GitHub Actions CI, Render (API) + Vercel (frontend)
 
 ## Key Features
 
@@ -265,6 +269,7 @@ Primary routes:
 - `GET /api/account/me` — account details
 - `GET /api/account/keys` / `POST` / `DELETE` — key management
 - `GET /api/account/tracks` — track library
+- `DELETE /api/account/tracks/:trackId` — delete a track (storage + DB)
 - `POST /api/account/tracks/:trackId/rate` — rate a track
 - `GET /api/account/tracks/:trackId/evaluation` — track evaluation summary
 - `POST /api/account/billing/checkout-session` — Stripe checkout
