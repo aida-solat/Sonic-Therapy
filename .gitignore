@@ -42,3 +42,5 @@ supabase/.branches/
 .vercel/
 .idea/
 .vscode/
+.vercel
+.env*.local
