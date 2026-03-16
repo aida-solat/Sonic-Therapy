@@ -4,6 +4,8 @@
 
 A full-stack AI-powered music therapy platform that generates personalized therapeutic audio sessions — combining binaural beat entrainment, Solfeggio frequencies, cultural healing traditions, and AI music generation into a single product surface. Built by **Deciwa**.
 
+![Sonic Therapy Platform — Landing Page](assets/thumbnail.png)
+
 Users describe their condition, choose their preferred music genre, set a session duration, and receive a scientifically-grounded therapy track tailored to their needs — complete with brainwave entrainment, frequency ramping, and optional cultural healing modes.
 
 ## Recruiter Snapshot
