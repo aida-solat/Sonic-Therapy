@@ -45,7 +45,7 @@ Sonic Therapy's commercial-ready infrastructure (Stripe billing, Supabase auth, 
 ## How to Become a Sponsor
 
 - **GitHub Sponsors:** [github.com/sponsors/aida-solat](https://github.com/sponsors/aida-solat)
-- **Ko-fi:** [ko-fi.com/aidaformat](https://ko-fi.com/aidaformat)
+- **Ko-fi:** [ko-fi.com/aidasolat](https://ko-fi.com/aidasolat)
 - **Patreon:** [patreon.com/aidaformat](https://patreon.com/aidaformat)
 - **Buy Me a Coffee:** [buymeacoffee.com/aidaformat](https://buymeacoffee.com/aidaformat)
 - **Corporate inquiries:** open a GitHub Issue with the `[Sponsorship]` prefix or reach out directly through your preferred channel.

@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/aida-solat/Ambient-Background-Music-Generator-API/actions/workflows/ci.yml/badge.svg)](https://github.com/aida-solat/Ambient-Background-Music-Generator-API/actions/workflows/ci.yml)
 [![GitHub Sponsors](https://img.shields.io/github/sponsors/aida-solat?label=Sponsors&logo=githubsponsors&color=EA4AAA)](https://github.com/sponsors/aida-solat)
-[![Ko-fi](https://img.shields.io/badge/Ko--fi-support-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/aidaformat)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-support-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/aidasolat)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/aidaformat)
 
 A full-stack AI-powered music therapy platform that generates personalized therapeutic audio sessions — combining binaural beat entrainment, Solfeggio frequencies, cultural healing traditions, and AI music generation into a single product surface. Built by **Deciwa**.
@@ -378,7 +378,7 @@ Sonic Therapy is a production-grade music therapy platform built on real audio s
 ### How to sponsor
 
 [![GitHub Sponsors](https://img.shields.io/badge/GitHub%20Sponsors-Sponsor-EA4AAA?logo=githubsponsors)](https://github.com/sponsors/aida-solat)
-[![Ko-fi](https://img.shields.io/badge/Ko--fi-Buy%20a%20coffee-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/aidaformat)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-Buy%20a%20coffee-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/aidasolat)
 [![Patreon](https://img.shields.io/badge/Patreon-Support-F96854?logo=patreon&logoColor=white)](https://patreon.com/aidaformat)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Support-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/aidaformat)
 
