@@ -365,14 +365,16 @@ Sonic Therapy is a production-grade music therapy platform built on real audio s
 
 ### Sponsorship tiers
 
-| Tier         | Monthly | Benefits                                         |
-| ------------ | ------- | ------------------------------------------------ |
-| ☕ Coffee    | $5      | Your name in the Backers section                 |
-| ⭐ Supporter | $15     | Name in README + priority Issues                 |
-| 🚀 Pro       | $50     | Monthly pair programming / code review session   |
-| 💎 Partner   | $200    | White-label license discussion + consulting call |
+| Tier         | Monthly | Benefits                                                  |
+| ------------ | ------- | --------------------------------------------------------- |
+| ☕ Coffee    | $5      | Your name in the Backers section                          |
+| ⭐ Supporter | $15     | Name in README + priority Issues                          |
+| 🚀 Pro       | $50     | Monthly pair programming / code review session            |
+| 💎 Partner   | $200    | Architecture consulting + white-label setup advisory call |
 
-**Corporate tiers** (logo in README, commercial license, dedicated support) are available — see [SPONSORS.md](SPONSORS.md) for details.
+**Corporate tiers** (logo in README, white-label setup, SLAs, dedicated support) are available — see [SPONSORS.md](SPONSORS.md) for details.
+
+> The code is MIT-licensed (free for commercial use). Corporate tiers pay for **services** (setup, integration, SLA, advisory) — not for the code itself.
 
 ### How to sponsor
 
@@ -386,6 +388,14 @@ _Be the first to support Sonic Therapy!_
 <!-- BACKERS:START -->
 <!-- BACKERS:END -->
 
+## Medical Disclaimer
+
+Sonic Therapy is a **wellness and creative tool**, not a medical device. The audio content, binaural beats, Solfeggio frequencies, and cultural healing modes are **not intended to diagnose, treat, cure, or prevent any disease or medical condition**. Consult a qualified healthcare professional for any medical concerns. Use at your own risk and discretion. Sonic Therapy and Deciwa accept no liability for any outcomes resulting from the use of generated audio content.
+
+## Security
+
+Please report security vulnerabilities responsibly by opening a private [GitHub Security Advisory](https://github.com/aida-solat/Sonic-Therapy/security/advisories/new) rather than a public issue. See [SECURITY.md](SECURITY.md) for details.
+
 ## License
 
-MIT
+MIT — see [LICENSE.md](LICENSE.md). Copyright © 2025 Deciwa (Aida Solat).
