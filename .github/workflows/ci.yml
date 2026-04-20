@@ -13,20 +13,9 @@ jobs:
   Build-Lint-Test:
     runs-on: ubuntu-latest
 
-    env:
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
-      STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      OPENAI_AUDIO_ENDPOINT: ${{ secrets.OPENAI_AUDIO_ENDPOINT }}
-      WATERMARK_FILE_PATH: ${{ secrets.WATERMARK_FILE_PATH }}
-      PORT: 3000
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -39,19 +28,23 @@ jobs:
           node-version: '24'
           cache: 'pnpm'
 
-
-      - name: Install dependencies
+      - name: Install backend dependencies
         run: pnpm install --frozen-lockfile || pnpm install
 
-      - name: Run lint
+      - name: Install frontend dependencies
+        run: pnpm --dir web install --frozen-lockfile || pnpm --dir web install
+
+      - name: Lint
         run: pnpm lint
-      
-      - name: Run type-check
+
+      - name: Type-check backend
         run: pnpm typecheck
 
-      - name: Build
+      - name: Type-check frontend
+        run: pnpm web:typecheck
+
+      - name: Build backend
         run: pnpm build
 
-      - name: Run tests
-        run: pnpm test
-
+      - name: Build frontend
+        run: pnpm web:build

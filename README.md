@@ -1,6 +1,8 @@
 # Sonic Therapy Platform (Personalized music therapy powered by AI)
 
 [![CI](https://github.com/aida-solat/Ambient-Background-Music-Generator-API/actions/workflows/ci.yml/badge.svg)](https://github.com/aida-solat/Ambient-Background-Music-Generator-API/actions/workflows/ci.yml)
+[![GitHub Sponsors](https://img.shields.io/github/sponsors/aida-solat?label=Sponsors&logo=githubsponsors&color=EA4AAA)](https://github.com/sponsors/aida-solat)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-support-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/aidasolat)
 
 A full-stack AI-powered music therapy platform that generates personalized therapeutic audio sessions — combining binaural beat entrainment, Solfeggio frequencies, cultural healing traditions, and AI music generation into a single product surface. Built by **Deciwa**.
 
@@ -350,6 +352,39 @@ flowchart LR
 ## Author
 
 Built by **Deciwa**.
+
+## Support This Project
+
+Sonic Therapy is a production-grade music therapy platform built on real audio science — not a CRUD demo with an AI API call bolted on. If this project is useful to you, or you want to see it grow, please consider sponsoring.
+
+### Why it's worth supporting
+
+- Binaural beat engine, Solfeggio frequency mixing, and 3-phase entrainment written from research papers — no library calls
+- RAG-augmented prompt retrieval, multi-model AI fallback, evaluation framework, and cultural healing modes
+- Complete product surface: auth, billing, storage, delivery, and studio UI — the full stack a real product requires
+
+### Sponsorship tiers
+
+| Tier         | Monthly | Benefits                                         |
+| ------------ | ------- | ------------------------------------------------ |
+| ☕ Coffee    | $5      | Your name in the Backers section                 |
+| ⭐ Supporter | $15     | Name in README + priority Issues                 |
+| 🚀 Pro       | $50     | Monthly pair programming / code review session   |
+| 💎 Partner   | $200    | White-label license discussion + consulting call |
+
+**Corporate tiers** (logo in README, commercial license, dedicated support) are available — see [SPONSORS.md](SPONSORS.md) for details.
+
+### How to sponsor
+
+[![GitHub Sponsors](https://img.shields.io/badge/GitHub%20Sponsors-Sponsor-EA4AAA?logo=githubsponsors)](https://github.com/sponsors/aida-solat)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-Buy%20a%20coffee-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/aidasolat)
+
+## Backers
+
+_Be the first to support Sonic Therapy!_
+
+<!-- BACKERS:START -->
+<!-- BACKERS:END -->
 
 ## License
 
