@@ -79,6 +79,14 @@
     line-height: 0.96;
   }
 
+  code,
+  kbd,
+  samp,
+  pre,
+  .font-mono {
+    font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
   p {
     text-wrap: pretty;
   }
