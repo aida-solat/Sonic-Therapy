@@ -19,7 +19,12 @@ export interface AppConfig {
   adminApiKey?: string;
 }
 
-const DEFAULT_CORS_ORIGINS = ['http://localhost:3001', 'http://127.0.0.1:3001'];
+const DEFAULT_CORS_ORIGINS = [
+  'http://localhost:3001',
+  'http://127.0.0.1:3001',
+  'https://sonic.deciwa.com',
+  'https://www.sonic.deciwa.com',
+];
 
 function getEnv(name: string): string {
   const value = process.env[name];
