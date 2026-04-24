@@ -14,6 +14,7 @@ import { MultiProviderWithFallback } from '../../providers/audio/multiProviderWi
 import { supabaseStorageService } from '../storage/supabaseStorageService';
 import { config } from '../../config/env';
 import { trackMetadataService } from '../tracks/trackMetadataService';
+import { audioAnalysisService } from '../audioAnalysis/audioAnalysisService';
 import { frequencyMappingService } from './frequencyMappingService';
 import { therapyPromptEngine } from './therapyPromptEngine';
 import { runBinauralMixPipeline } from './binauralMixService';
@@ -135,9 +136,21 @@ export const generateTherapyTrackService: GenerateTherapyTrackService = {
         },
       });
 
+      // 9) Trigger objective audio analysis in the background (non-blocking).
+      // The Python audio-analysis microservice fetches the uploaded track,
+      // computes BPM / spectral / therapy-fit metrics, and writes them back
+      // to the tracks row. Failure is logged and persisted as
+      // audio_analysis_status='failed' — user delivery is never blocked.
+      audioAnalysisService.triggerInBackground({
+        trackId: track.id,
+        storagePath: track.storagePath,
+        targetBpm: smartTempo,
+        targetBrainwaveHz: frequency.hz,
+      });
+
       const expiresInSeconds = 3600;
 
-      // 9) Generate signed URL
+      // 10) Generate signed URL
       const downloadUrl = await supabaseStorageService.getDownloadUrl({
         storagePath: track.storagePath,
         expiresInSeconds,
