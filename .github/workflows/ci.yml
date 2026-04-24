@@ -12,7 +12,6 @@ on:
 jobs:
   Build-Lint-Test:
     runs-on: ubuntu-latest
-    name: Node Backend + Web (TypeScript)
 
     steps:
       - name: Checkout repository
@@ -52,7 +51,6 @@ jobs:
 
   audio-analysis-service:
     runs-on: ubuntu-latest
-    name: Python Audio Analysis Service
     defaults:
       run:
         working-directory: audio-analysis-service
