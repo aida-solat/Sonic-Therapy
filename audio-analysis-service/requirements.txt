@@ -1,0 +1,8 @@
+fastapi==0.118.0
+uvicorn[standard]==0.37.0
+pydantic==2.11.0
+httpx==0.28.1
+librosa==0.11.0
+numpy==2.2.0
+soundfile==0.13.1
+python-multipart==0.0.20
