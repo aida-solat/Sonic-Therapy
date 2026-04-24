@@ -88,6 +88,38 @@ export interface HealthResponse {
   provider?: { status: 'ok' | 'error'; error?: string };
 }
 
+export type AudioAnalysisStatus = 'pending' | 'completed' | 'failed' | 'skipped';
+
+export type AudioAnalysisRecommendation = 'excellent' | 'good' | 'acceptable' | 'poor';
+
+export interface AudioAnalysisResult {
+  durationSeconds: number;
+  sampleRate: number;
+  channels: number;
+  tempoBpm: number;
+  bpmError?: number | null;
+  keyEstimate: string;
+  harmonicPercussiveRatio: number;
+  spectral: {
+    spectralCentroidHz: number;
+    spectralBandwidthHz: number;
+    spectralRolloffHz: number;
+    zeroCrossingRate: number;
+  };
+  dynamics: {
+    rmsMean: number;
+    rmsStd: number;
+    dynamicRangeDb: number;
+  };
+  therapy: {
+    subBassEnergyRatio: number;
+    lowFrequencyEnergyRatio: number;
+    highFrequencyEnergyRatio: number;
+  };
+  therapyFitScore: number;
+  recommendation: AudioAnalysisRecommendation;
+}
+
 export interface AccountTrackItem {
   id: string;
   format: 'mp3' | 'wav';
@@ -97,6 +129,10 @@ export interface AccountTrackItem {
   formatWav?: 'wav';
   trackType?: 'standard' | 'therapy';
   therapyFrequency?: { band: string; hz: number; solfeggioHz?: number; label: string } | null;
+  audioAnalysis?: AudioAnalysisResult | null;
+  audioAnalysisScore?: number | null;
+  audioAnalysisStatus?: AudioAnalysisStatus;
+  audioAnalysisAt?: string | null;
   metadata: {
     tempo: number;
     mood: string;

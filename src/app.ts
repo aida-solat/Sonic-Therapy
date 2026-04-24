@@ -11,6 +11,7 @@ import { registerKeysRoute } from './routes/keys.route';
 import { registerMeRoute } from './routes/me.route';
 import { registerStripeWebhookRoute } from './routes/stripeWebhook.route';
 import { registerAccountRoute } from './routes/account.route';
+import { registerAdminRoute } from './routes/admin.route';
 import { registerTherapyRoute } from './routes/therapy.route';
 import { AppError, ErrorResponse } from './types/errors';
 
@@ -77,6 +78,7 @@ export function buildApp(): FastifyInstance {
   registerKeysRoute(app);
   registerMeRoute(app);
   registerAccountRoute(app);
+  registerAdminRoute(app);
   registerStripeWebhookRoute(app);
   registerTherapyRoute(app);
 

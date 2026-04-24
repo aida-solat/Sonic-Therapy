@@ -112,6 +112,16 @@ export const AccountTracksSchema = {
                   label: { type: 'string' },
                 },
               },
+              audioAnalysis: {
+                type: ['object', 'null'],
+                additionalProperties: true,
+              },
+              audioAnalysisScore: { type: ['number', 'null'] },
+              audioAnalysisStatus: {
+                type: 'string',
+                enum: ['pending', 'completed', 'failed', 'skipped'],
+              },
+              audioAnalysisAt: { type: ['string', 'null'], format: 'date-time' },
               metadata: {
                 type: 'object',
                 additionalProperties: false,
