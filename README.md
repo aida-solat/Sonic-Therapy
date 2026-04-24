@@ -41,9 +41,10 @@ The result is a **personalized music therapy session** — not a generic meditat
 - **Cultural healing modes:** Chinese Five-Element (pentatonic scales mapped to organ systems), Indian Raga Chikitsa (classical ragas matched to time-of-day and condition), Ottoman Maqam (modal system with quarter-tone intervals) — each with goal-specific musical guidance injected into the AI prompt
 - **Ambient music generation:** mood-aware, style-specific prompt engine with RAG-augmented retrieval for distinct, high-quality background music across 192+ prompt variations
 - **Multi-model AI:** provider abstraction with automatic fallback (MusicGen → OpenAI), latency logging, and error aggregation
-- **Evaluation framework:** 4-dimension star rating (satisfaction, mood accuracy, style accuracy, audio quality) with per-track, per-provider, and mood×style matrix aggregation
-- **Full product surface:** Next.js dashboard + Fastify API + Supabase auth/storage + Stripe billing — not a prototype
-- **Operational credibility:** SQL migrations, OpenAPI contract, integration tests, and CI
+- **Evaluation framework:** 4-dimension star rating (satisfaction, mood accuracy, style accuracy, audio quality) with per-track, per-provider, and mood×style matrix aggregation, augmented by automatic objective metrics from a dedicated audio-analysis microservice
+- **Polyglot architecture:** Node.js/TypeScript core API (Fastify) + Python/FastAPI audio analysis microservice — each language chosen where its ecosystem is strongest (TypeScript for the product surface, Python + librosa for scientific audio analysis)
+- **Full product surface:** Next.js dashboard + Fastify API + Python audio analysis + Supabase auth/storage + Stripe billing — not a prototype
+- **Operational credibility:** SQL migrations, OpenAPI contracts (both services), integration tests, Docker images, and CI
 
 ## Why This Project Matters
 

@@ -48,3 +48,37 @@ jobs:
 
       - name: Build frontend
         run: pnpm web:build
+
+  audio-analysis-service:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: audio-analysis-service
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: audio-analysis-service/requirements.txt
+
+      - name: Install system audio dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsndfile1 ffmpeg
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest ruff
+
+      - name: Lint (ruff)
+        run: ruff check app tests
+
+      - name: Run tests
+        run: pytest -v
