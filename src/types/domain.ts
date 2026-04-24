@@ -139,6 +139,44 @@ export interface GenerateRequest {
   intensity?: IntensityLevel;
 }
 
+export type AudioAnalysisStatus = 'pending' | 'completed' | 'failed' | 'skipped';
+
+export type AudioAnalysisRecommendation = 'excellent' | 'good' | 'acceptable' | 'poor';
+
+export interface AudioAnalysisSpectral {
+  spectralCentroidHz: number;
+  spectralBandwidthHz: number;
+  spectralRolloffHz: number;
+  zeroCrossingRate: number;
+}
+
+export interface AudioAnalysisDynamics {
+  rmsMean: number;
+  rmsStd: number;
+  dynamicRangeDb: number;
+}
+
+export interface AudioAnalysisTherapy {
+  subBassEnergyRatio: number;
+  lowFrequencyEnergyRatio: number;
+  highFrequencyEnergyRatio: number;
+}
+
+export interface AudioAnalysisResult {
+  durationSeconds: number;
+  sampleRate: number;
+  channels: number;
+  tempoBpm: number;
+  bpmError?: number | null;
+  keyEstimate: string;
+  harmonicPercussiveRatio: number;
+  spectral: AudioAnalysisSpectral;
+  dynamics: AudioAnalysisDynamics;
+  therapy: AudioAnalysisTherapy;
+  therapyFitScore: number;
+  recommendation: AudioAnalysisRecommendation;
+}
+
 export interface TrackMetadata {
   id: string;
   userId: string;
@@ -158,6 +196,10 @@ export interface TrackMetadata {
   format: 'mp3' | 'wav';
   trackType: 'standard' | 'therapy';
   therapyFrequency?: { band: string; hz: number; solfeggioHz?: number; label: string } | null;
+  audioAnalysis?: AudioAnalysisResult | null;
+  audioAnalysisScore?: number | null;
+  audioAnalysisStatus?: AudioAnalysisStatus;
+  audioAnalysisAt?: Date | null;
   createdAt: Date;
 }
 

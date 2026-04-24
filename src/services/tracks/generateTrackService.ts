@@ -16,6 +16,8 @@ import { runFfmpegPipeline } from '../../infra/ffmpeg';
 import { supabaseStorageService } from '../storage/supabaseStorageService';
 import { config } from '../../config/env';
 
+import { audioAnalysisService } from '../audioAnalysis/audioAnalysisService';
+
 import { trackMetadataService } from './trackMetadataService';
 
 export interface GenerateTrackService {
@@ -110,6 +112,15 @@ export const generateTrackService: GenerateTrackService = {
         wavStoragePath: uploadResultWav?.storagePath ?? null,
         durationSeconds: request.length,
         format: 'mp3',
+      });
+
+      // 7.5) Trigger objective audio analysis in the background (non-blocking).
+      // Standard (non-therapy) tracks are analyzed without a target brainwave Hz;
+      // the tempo component of therapy_fit_score falls back to a neutral value.
+      audioAnalysisService.triggerInBackground({
+        trackId: track.id,
+        storagePath: track.storagePath,
+        targetBpm: request.tempo,
       });
 
       const expiresInSeconds = 3600;

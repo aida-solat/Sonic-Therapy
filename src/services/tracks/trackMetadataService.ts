@@ -1,5 +1,11 @@
 import { supabaseClient } from '../../infra/supabaseClient';
-import { GenerateRequest, PlanType, TrackMetadata } from '../../types/domain';
+import {
+  AudioAnalysisResult,
+  AudioAnalysisStatus,
+  GenerateRequest,
+  PlanType,
+  TrackMetadata,
+} from '../../types/domain';
 import { AppError } from '../../types/errors';
 
 export interface SaveTrackParams {
@@ -19,8 +25,15 @@ export interface SaveTrackParams {
   therapyFrequency?: { band: string; hz: number; solfeggioHz?: number; label: string } | null;
 }
 
+export interface UpdateAudioAnalysisParams {
+  trackId: string;
+  status: AudioAnalysisStatus;
+  result?: AudioAnalysisResult;
+}
+
 export interface TrackMetadataService {
   save(params: SaveTrackParams): Promise<TrackMetadata>;
+  updateAudioAnalysis(params: UpdateAudioAnalysisParams): Promise<void>;
 }
 
 export const trackMetadataService: TrackMetadataService = {
@@ -77,5 +90,29 @@ export const trackMetadataService: TrackMetadataService = {
     };
 
     return track;
+  },
+
+  async updateAudioAnalysis(params: UpdateAudioAnalysisParams): Promise<void> {
+    const { trackId, status, result } = params;
+
+    const update: Record<string, unknown> = {
+      audio_analysis_status: status,
+    };
+
+    if (result) {
+      update.audio_analysis = result;
+      update.audio_analysis_score = result.therapyFitScore;
+      update.audio_analysis_at = new Date().toISOString();
+    }
+
+    const { error } = await supabaseClient.from('tracks').update(update).eq('id', trackId);
+
+    if (error) {
+      throw new AppError(
+        `Failed to update audio analysis status for track ${trackId}: ${error.message}`,
+        'db_error',
+        500,
+      );
+    }
   },
 };

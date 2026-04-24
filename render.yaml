@@ -27,3 +27,22 @@ services:
         sync: false
       - key: REPLICATE_API_TOKEN
         sync: false
+      - key: AUDIO_ANALYSIS_URL
+        fromService:
+          type: web
+          name: sonic-therapy-audio-analysis
+          property: host
+
+  - type: web
+    name: sonic-therapy-audio-analysis
+    runtime: docker
+    plan: free
+    dockerfilePath: ./audio-analysis-service/Dockerfile
+    dockerContext: ./audio-analysis-service
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: LOG_LEVEL
+        value: INFO
+      - key: ALLOWED_ORIGINS
+        sync: false

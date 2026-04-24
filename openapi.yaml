@@ -573,6 +573,31 @@ components:
         therapyFrequency:
           $ref: '#/components/schemas/TherapyFrequencyTarget'
           description: Frequency metadata for therapy tracks (null for standard tracks)
+        audioAnalysis:
+          $ref: '#/components/schemas/AudioAnalysisResult'
+          description: >
+            Objective acoustic metrics computed asynchronously by the Python
+            audio-analysis microservice. `null` while analysis is pending or
+            if it failed. Use `audioAnalysisStatus` to check the state.
+        audioAnalysisScore:
+          type: number
+          minimum: 0
+          maximum: 1
+          nullable: true
+          description: >
+            Flattened 0..1 therapy-fit score copied from
+            `audioAnalysis.therapyFitScore` for cheap filtering and sorting.
+        audioAnalysisStatus:
+          type: string
+          enum: [pending, completed, failed, skipped]
+          description: >
+            State of the asynchronous analysis job. `skipped` means the
+            analysis service is not configured on this deployment.
+        audioAnalysisAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Timestamp when analysis completed successfully (null otherwise).
         metadata:
           $ref: '#/components/schemas/TrackMetadata'
 
@@ -878,6 +903,118 @@ components:
         label:
           type: string
           description: Human-readable description of the frequency target
+
+    AudioAnalysisSpectral:
+      type: object
+      required: [spectralCentroidHz, spectralBandwidthHz, spectralRolloffHz, zeroCrossingRate]
+      properties:
+        spectralCentroidHz:
+          type: number
+          description: Brightness — higher = more high-frequency energy.
+        spectralBandwidthHz:
+          type: number
+          description: Spread of frequencies around the centroid.
+        spectralRolloffHz:
+          type: number
+          description: Frequency below which 85% of spectral energy is concentrated.
+        zeroCrossingRate:
+          type: number
+          description: Noisiness proxy — higher values indicate more noise-like content.
+
+    AudioAnalysisDynamics:
+      type: object
+      required: [rmsMean, rmsStd, dynamicRangeDb]
+      properties:
+        rmsMean:
+          type: number
+          description: Mean RMS energy (loudness).
+        rmsStd:
+          type: number
+          description: Std of RMS — higher = more dynamic, lower = more consistent.
+        dynamicRangeDb:
+          type: number
+          description: Peak-to-mean ratio in dB.
+
+    AudioAnalysisTherapy:
+      type: object
+      required: [subBassEnergyRatio, lowFrequencyEnergyRatio, highFrequencyEnergyRatio]
+      properties:
+        subBassEnergyRatio:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Proportion of energy in 20–80 Hz — important for binaural carrier audibility.
+        lowFrequencyEnergyRatio:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Proportion of energy below 200 Hz — relevant for relaxation.
+        highFrequencyEnergyRatio:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Proportion of energy above 4 kHz — relevant for alertness / focus goals.
+
+    AudioAnalysisResult:
+      type: object
+      description: >
+        Objective acoustic features extracted from a generated track by the
+        Python audio-analysis microservice (FastAPI + librosa). Populated
+        asynchronously after track creation; see `audioAnalysisStatus` on the
+        track to check readiness.
+      required:
+        - durationSeconds
+        - sampleRate
+        - channels
+        - tempoBpm
+        - keyEstimate
+        - harmonicPercussiveRatio
+        - spectral
+        - dynamics
+        - therapy
+        - therapyFitScore
+        - recommendation
+      properties:
+        durationSeconds:
+          type: number
+          description: Duration of the analyzed audio in seconds.
+        sampleRate:
+          type: integer
+          description: Internal analysis sample rate (usually 22050).
+        channels:
+          type: integer
+          description: Number of channels in the original audio.
+        tempoBpm:
+          type: number
+          description: Estimated tempo using librosa's beat tracker.
+        bpmError:
+          type: number
+          nullable: true
+          description: Absolute difference from the target BPM (if a target was provided).
+        keyEstimate:
+          type: string
+          description: Estimated musical key, e.g. "C major" or "A minor".
+        harmonicPercussiveRatio:
+          type: number
+          description: Harmonic-to-percussive energy ratio — higher = more melodic.
+        spectral:
+          $ref: '#/components/schemas/AudioAnalysisSpectral'
+        dynamics:
+          $ref: '#/components/schemas/AudioAnalysisDynamics'
+        therapy:
+          $ref: '#/components/schemas/AudioAnalysisTherapy'
+        therapyFitScore:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: >
+            Composite 0..1 score combining BPM alignment (40%), low-frequency
+            energy emphasis (25%), sub-bass presence (20%), and dynamics
+            consistency (15%).
+        recommendation:
+          type: string
+          enum: [excellent, good, acceptable, poor]
+          description: Human-readable verdict derived from `therapyFitScore`.
 
     ErrorResponse:
       type: object

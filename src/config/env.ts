@@ -14,6 +14,8 @@ export interface AppConfig {
   logLevel: string;
   corsOrigins: string[];
   port: number;
+  audioAnalysisUrl?: string;
+  audioAnalysisTimeoutMs: number;
 }
 
 const DEFAULT_CORS_ORIGINS = ['http://localhost:3001', 'http://127.0.0.1:3001'];
@@ -48,4 +50,6 @@ export const config: AppConfig = {
     ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())
     : DEFAULT_CORS_ORIGINS,
   port: Number(process.env.PORT ?? 3000),
+  audioAnalysisUrl: getEnvOptional('AUDIO_ANALYSIS_URL'),
+  audioAnalysisTimeoutMs: Number(process.env.AUDIO_ANALYSIS_TIMEOUT_MS ?? 45_000),
 };
