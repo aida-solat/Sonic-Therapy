@@ -1,4 +1,5 @@
 import { supabaseClient } from '../../infra/supabaseClient';
+import { AudioAnalysisResult, AudioAnalysisStatus } from '../../types/domain';
 import { AppError } from '../../types/errors';
 import { supabaseStorageService } from '../storage/supabaseStorageService';
 
@@ -11,6 +12,10 @@ export interface ListedTrack {
   formatWav?: 'wav';
   trackType: 'standard' | 'therapy';
   therapyFrequency?: { band: string; hz: number; solfeggioHz?: number; label: string } | null;
+  audioAnalysis?: AudioAnalysisResult | null;
+  audioAnalysisScore?: number | null;
+  audioAnalysisStatus?: AudioAnalysisStatus;
+  audioAnalysisAt?: string | null;
   metadata: {
     tempo: number;
     mood: string;
@@ -42,7 +47,7 @@ export const listTracksService: ListTracksService = {
     const { data, error } = await supabaseClient
       .from('tracks')
       .select(
-        'id, format, created_at, storage_path, wav_storage_path, tempo, mood, duration_seconds, style, intensity, provider, provider_version, plan, watermarked, commercial_license, track_type, therapy_frequency',
+        'id, format, created_at, storage_path, wav_storage_path, tempo, mood, duration_seconds, style, intensity, provider, provider_version, plan, watermarked, commercial_license, track_type, therapy_frequency, audio_analysis, audio_analysis_score, audio_analysis_status, audio_analysis_at',
       )
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
@@ -94,6 +99,12 @@ export const listTracksService: ListTracksService = {
                 },
               }
             : {}),
+          audioAnalysis: (row.audio_analysis as AudioAnalysisResult | null) ?? null,
+          audioAnalysisScore:
+            typeof row.audio_analysis_score === 'number' ? row.audio_analysis_score : null,
+          audioAnalysisStatus:
+            (row.audio_analysis_status as AudioAnalysisStatus | undefined) ?? 'pending',
+          audioAnalysisAt: row.audio_analysis_at ?? null,
           metadata: {
             tempo: row.tempo,
             mood: row.mood,

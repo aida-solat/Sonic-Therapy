@@ -8,6 +8,7 @@ import type { Session, SupabaseClient } from '@supabase/supabase-js';
 import { api } from '@/lib/api';
 import { downloadFile } from '@/lib/download';
 import { getSupabaseBrowserClient } from '@/lib/supabase-browser';
+import { AudioAnalysisBadge } from '@/components/audio-analysis-badge';
 import { TherapyPanel } from '@/components/therapy-panel';
 import { useToast } from '@/components/toast';
 import type {
@@ -1317,6 +1318,7 @@ export function DashboardApp() {
                                   <span className="badge badge-sm badge-outline">
                                     {track.metadata.watermarked ? 'watermarked' : 'clean'}
                                   </span>
+                                  <AudioAnalysisBadge track={track} />
                                 </div>
 
                                 {/* Therapy frequency chips */}

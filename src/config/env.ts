@@ -16,6 +16,7 @@ export interface AppConfig {
   port: number;
   audioAnalysisUrl?: string;
   audioAnalysisTimeoutMs: number;
+  adminApiKey?: string;
 }
 
 const DEFAULT_CORS_ORIGINS = ['http://localhost:3001', 'http://127.0.0.1:3001'];
@@ -52,4 +53,5 @@ export const config: AppConfig = {
   port: Number(process.env.PORT ?? 3000),
   audioAnalysisUrl: getEnvOptional('AUDIO_ANALYSIS_URL'),
   audioAnalysisTimeoutMs: Number(process.env.AUDIO_ANALYSIS_TIMEOUT_MS ?? 45_000),
+  adminApiKey: getEnvOptional('ADMIN_API_KEY'),
 };
