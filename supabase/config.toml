@@ -1,4 +1,4 @@
-project_id = "<your-supabase-project-ref>"
+project_id = "rlhcoykuhrpmuipsynwq"
 
 [db]
 port = 54322
