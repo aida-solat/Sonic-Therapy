@@ -1,4 +1,4 @@
-# Sonic Therapy Platform (Personalized music therapy powered by AI)
+# Sonic Therapy Platform — Personalized AI Music Therapy
 
 [![CI](https://github.com/aida-solat/Ambient-Background-Music-Generator-API/actions/workflows/ci.yml/badge.svg)](https://github.com/aida-solat/Ambient-Background-Music-Generator-API/actions/workflows/ci.yml)
 [![GitHub Sponsors](https://img.shields.io/github/sponsors/aida-solat?label=Sponsors&logo=githubsponsors&color=EA4AAA)](https://github.com/sponsors/aida-solat)
